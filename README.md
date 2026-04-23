@@ -4,6 +4,8 @@ by [@levelsio](https://x.com/levelsio)
 
 [![GitHub stars](https://img.shields.io/github/stars/levelsio/superlevels?style=social)](https://github.com/levelsio/superlevels/stargazers)
 
+Please star this repo if you like it!
+
 A super Chrome extension that replaces 12+ separate extensions with one open-source, privacy-respecting package.
 
 Most Chrome extensions are closed-source malware/spyware-filled garbage that form a massive security risk. This one is open source and you can read and check the source code (with AI) before you install it, and customize it to your liking!
