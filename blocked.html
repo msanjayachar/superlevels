@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Blocked - Regain</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 420px;
+    }
+    .icon {
+      font-size: 72px;
+      margin-bottom: 20px;
+      animation: bounce 2s ease-in-out infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 12px;
+      color: #fff;
+    }
+    .site {
+      font-size: 16px;
+      color: #e94560;
+      margin-bottom: 20px;
+      padding: 10px 20px;
+      background: rgba(233, 69, 96, 0.1);
+      border-radius: 8px;
+      display: inline-block;
+    }
+    p {
+      color: #888;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+    .reason {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .reason-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .reason-stats {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+    }
+    .reason-stat .val {
+      font-size: 28px;
+      font-weight: 700;
+      color: #e94560;
+    }
+    .reason-stat .lbl {
+      font-size: 11px;
+      color: #888;
+    }
+    .timer {
+      font-size: 56px;
+      font-weight: 700;
+      color: #e94560;
+      margin: 20px 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .timer-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .add-time-btns {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .add-time-btn {
+      flex: 1;
+      padding: 14px 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .add-time-btn:hover {
+      transform: scale(1.05);
+    }
+    .add-time-btn .lbl {
+      display: block;
+      font-size: 10px;
+      font-weight: 400;
+      margin-top: 2px;
+      opacity: 0.8;
+    }
+    .deactivate-btn {
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: #888;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .deactivate-btn:hover {
+      border-color: #e94560;
+      color: #e94560;
+    }
+    .countdown {
+      font-size: 12px;
+      color: #555;
+      margin-top: 16px;
+    }
+    .countdown span {
+      color: #e94560;
+      font-weight: 600;
+    }
+    .tips {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: left;
+      margin-top: 24px;
+    }
+    .tips h3 {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 12px;
+    }
+    .tip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+    .tip:last-child { margin-bottom: 0; }
+    .tip .emoji { font-size: 16px; }
+    .hidden { display: none !important; }
+    .loading {
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">⏱</div>
+    <h1 id="title">Stay Focused!</h1>
+    <div class="site" id="blockedSite">youtube.com</div>
+    
+    <!-- Focus session blocking -->
+    <div id="focusBlock" class="hidden">
+      <p>This site is blocked during your focus session.</p>
+      <div class="timer" id="remainingTime">--:--</div>
+      <div class="timer-label">Time remaining</div>
+    </div>
+    
+    <!-- Daily limit reached -->
+    <div id="limitBlock" class="hidden">
+      <div class="reason">
+        <div class="reason-label">Daily Limit Reached</div>
+        <div class="reason-stats">
+          <div class="reason-stat">
+            <div class="val" id="usedTime">0</div>
+            <div class="lbl">minutes used</div>
+          </div>
+          <div class="reason-stat">
+            <div class="val" id="limitTime">0</div>
+            <div class="lbl">minutes limit</div>
+          </div>
+        </div>
+      </div>
+      
+      <p>Add more time to continue using this site</p>
+      
+      <div class="add-time-btns">
+        <button class="add-time-btn" data-mins="5">+5<div class="lbl">min</div></button>
+        <button class="add-time-btn" data-mins="10">+10<div class="lbl">min</div></button>
+        <button class="add-time-btn" data-mins="15">+15<div class="lbl">min</div></button>
+        <button class="add-time-btn" data-mins="20">+20<div class="lbl">min</div></button>
+      </div>
+      
+      <button class="deactivate-btn" id="deactivateBtn">Deactivate for today</button>
+      
+      <div class="countdown">
+        Resets in <span id="resetTime">--:--</span>
+      </div>
+    </div>
+    
+    <div class="tips">
+      <h3>While you wait...</h3>
+      <div class="tip"><span class="emoji">📚</span> Read that book you've been putting off</div>
+      <div class="tip"><span class="emoji">🏃</span> Take a quick walk or stretch</div>
+      <div class="tip"><span class="emoji">📝</span> Write down your thoughts</div>
+      <div class="tip"><span class="emoji">💤</span> Take a deep breath and relax</div>
+    </div>
+  </div>
+  
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const site = params.get('site') || 'this site';
+    const reason = params.get('reason') || 'focus';
+    const limit = parseInt(params.get('limit')) || 0;
+    const used = parseInt(params.get('used')) || 0;
+    const duration = parseInt(params.get('duration')) || 0;
+    const startTime = parseInt(params.get('startTime')) || 0;
+    
+    document.getElementById('blockedSite').textContent = site;
+    
+    if (reason === 'limit') {
+      // Daily limit reached
+      document.getElementById('title').textContent = 'Limit Reached!';
+      document.getElementById('limitBlock').classList.remove('hidden');
+      document.getElementById('usedTime').textContent = used;
+      document.getElementById('limitTime').textContent = limit;
+      
+      // Update reset countdown
+      function updateResetCountdown() {
+        const now = new Date();
+        const midnight = new Date(now);
+        midnight.setDate(midnight.getDate() + 1);
+        midnight.setHours(0, 0, 0, 0);
+        const diff = midnight - now;
+        const hours = Math.floor(diff / 3600000);
+        const mins = Math.floor((diff % 3600000) / 60000);
+        document.getElementById('resetTime').textContent = `${hours}h ${mins}m`;
+      }
+      updateResetCountdown();
+      setInterval(updateResetCountdown, 60000);
+      
+    } else {
+      // Focus session blocking
+      document.getElementById('focusBlock').classList.remove('hidden');
+      
+      if (duration > 0 && startTime > 0) {
+        function updateTimer() {
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          const remaining = Math.max(0, duration * 60 - elapsed);
+          const mins = Math.floor(remaining / 60);
+          const secs = remaining % 60;
+          document.getElementById('remainingTime').textContent = 
+            `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+          
+          if (remaining <= 0) {
+            // Focus session ended, try to go back
+            window.history.back();
+          }
+        }
+        updateTimer();
+        setInterval(updateTimer, 1000);
+      }
+    }
+    
+    // Add time buttons
+    document.querySelectorAll('.add-time-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mins = parseInt(btn.dataset.mins);
+        chrome.runtime.sendMessage({
+          type: 'regainAddTime',
+          site: site,
+          mins: mins
+        }, () => {
+          // Go back or refresh
+          window.history.back();
+        });
+      });
+    });
+    
+    // Deactivate button
+    document.getElementById('deactivateBtn').addEventListener('click', () => {
+      chrome.runtime.sendMessage({
+        type: 'regainDeactivateSite',
+        site: site
+      }, () => {
+        window.history.back();
+      });
+    });
+  </script>
+</body>
+</html>

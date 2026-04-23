@@ -24,7 +24,7 @@
       flex-shrink: 0;
     }
     .nav button {
-      width: calc(100% / 6);
+      width: calc(100% / 7);
       padding: 9px 2px;
       background: none;
       border: none;
@@ -725,6 +725,226 @@
     }
     .btn-cancel { background: #333; color: #aaa; }
     .btn-cancel:hover { background: #444; }
+
+    /* ── Regain ── */
+    .regain-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 10px; margin-bottom: 14px;
+    }
+    .regain-header .title {
+      font-size: 18px; font-weight: 700; color: #fff;
+    }
+    .regain-header .subtitle {
+      font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 2px;
+    }
+    .regain-toggle .switch { transform: scale(1.2); }
+    .regain-stats {
+      display: flex; gap: 10px; margin-bottom: 14px;
+    }
+    .regain-stat {
+      flex: 1; padding: 10px; background: #16213e;
+      border-radius: 8px; text-align: center;
+    }
+    .regain-stat .val {
+      font-size: 20px; font-weight: 700; color: #e94560;
+    }
+    .regain-stat .lbl {
+      font-size: 10px; color: #888; text-transform: uppercase;
+    }
+    .regain-modes {
+      display: flex; gap: 6px; margin-bottom: 12px;
+    }
+    .regain-modes button {
+      flex: 1; padding: 10px; border: 1px solid #2a2a4a;
+      background: #16213e; color: #888;
+      border-radius: 8px; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .regain-modes button:focus { outline: none; }
+    .regain-modes button.active {
+      border-color: #e94560; color: #e94560; background: #2a1525;
+    }
+    .regain-section {
+      padding: 12px; background: #16213e;
+      border-radius: 8px; margin-bottom: 10px;
+    }
+    .regain-section h3 {
+      font-size: 12px; color: #888; margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .regain-section h3 button {
+      background: none; border: none; color: #e94560;
+      font-size: 11px; cursor: pointer;
+    }
+    .regain-blocklist {
+      max-height: 120px; overflow-y: auto;
+    }
+    .regain-blocklist .item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px; background: #0f1e3d;
+      border-radius: 6px; margin-bottom: 4px; font-size: 12px;
+    }
+    .regain-blocklist .item .site { flex: 1; word-break: break-all; }
+    .regain-blocklist .item .limit-btns {
+      display: flex; gap: 3px; margin-right: 8px;
+    }
+    .regain-blocklist .item .limit-btn {
+      padding: 3px 6px; background: #0f3460;
+      border: 1px solid #2a2a4a; border-radius: 4px;
+      color: #666; font-size: 10px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .regain-blocklist .item .limit-btn:hover { border-color: #e94560; color: #e94560; }
+    .regain-blocklist .item .limit-btn.active {
+      background: #e94560; border-color: #e94560; color: #fff;
+    }
+    .regain-blocklist .item button {
+      background: none; border: none; color: #e94560;
+      font-size: 14px; cursor: pointer; padding: 0 4px;
+    }
+    .regain-blocklist .item button:hover { color: #ff6b81; }
+    .regain-add-row {
+      display: flex; gap: 6px; margin-bottom: 10px;
+    }
+    .regain-add-row input {
+      flex: 1; padding: 8px 10px;
+      border: 1px solid #333; border-radius: 6px;
+      background: #0f3460; color: #fff; font-size: 12px;
+    }
+    .regain-add-row input::placeholder { color: #666; }
+    .regain-add-row input:focus { outline: none; border-color: #e94560; }
+    .regain-add-row button {
+      padding: 8px 14px; background: #e94560; color: #fff;
+      border: none; border-radius: 6px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .regain-add-row button:hover { background: #c73650; }
+    .regain-suggestions {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
+    }
+    .regain-suggestion {
+      padding: 5px 10px; background: #0f3460;
+      border: 1px solid #2a2a4a; border-radius: 20px;
+      font-size: 11px; color: #aaa; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .regain-suggestion:hover { border-color: #e94560; color: #e94560; }
+    .regain-timer-presets {
+      display: flex; gap: 8px; margin-bottom: 12px;
+    }
+    .regain-timer-presets button {
+      flex: 1; padding: 12px 8px;
+      background: #0f3460; border: 2px solid #2a2a4a;
+      border-radius: 8px; color: #aaa; font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .regain-timer-presets button:focus { outline: none; }
+    .regain-timer-presets button.active {
+      border-color: #e94560; color: #e94560; background: #2a1525;
+    }
+    .regain-timer-presets button .lbl {
+      display: block; font-size: 9px; font-weight: 400; margin-top: 2px;
+    }
+    .regain-timer-display {
+      text-align: center; padding: 20px 0;
+    }
+    .regain-timer-display .time {
+      font-size: 48px; font-weight: 700; color: #e94560;
+      font-variant-numeric: tabular-nums;
+    }
+    .regain-timer-display .time.running {
+      animation: timer-pulse 1s ease-in-out infinite;
+    }
+    @keyframes timer-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .regain-timer-display .status {
+      font-size: 12px; color: #888; margin-top: 6px;
+    }
+    .regain-timer-btns {
+      display: flex; gap: 10px;
+    }
+    .regain-timer-btns button {
+      flex: 1; padding: 14px; border: none;
+      border-radius: 8px; font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .regain-start-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+    .regain-start-btn:hover { transform: scale(1.02); }
+    .regain-stop-btn {
+      background: #e94560; color: #fff;
+    }
+    .regain-stop-btn:hover { background: #c73650; }
+    .regain-passcode-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; background: #16213e;
+      border-radius: 8px; margin-bottom: 10px;
+    }
+    .regain-passcode-row label { font-size: 12px; color: #aaa; flex: 1; }
+    .regain-passcode-row input {
+      width: 60px; padding: 6px 10px;
+      background: #0f1e3d; border: 1px solid #333;
+      border-radius: 6px; color: #fff; font-size: 16px;
+      text-align: center; letter-spacing: 4px;
+    }
+    .regain-passcode-row input:focus { outline: none; border-color: #e94560; }
+    .regain-passcode-row button {
+      padding: 6px 12px; background: #333;
+      border: none; border-radius: 6px;
+      color: #aaa; font-size: 12px; cursor: pointer;
+    }
+    .regain-passcode-row button:hover { background: #444; }
+    .regain-passcode-row.set .set-btn { display: none; }
+    .regain-passcode-row.set .change-btn { display: inline-block; }
+    .regain-passcode-row:not(.set) .change-btn { display: none; }
+    .regain-empty {
+      color: #555; font-size: 12px; text-align: center; padding: 12px;
+    }
+    .regain-daily-limits { display: none; }
+    .regain-daily-limits.show { display: block; }
+    .regain-focus-mode { display: none; }
+    .regain-focus-mode.show { display: block; }
+    .regain-mode-content { display: none; }
+    .regain-mode-content.show { display: block; }
+    .regain-verify-passcode {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.8); z-index: 200;
+      justify-content: center; align-items: center;
+    }
+    .regain-verify-passcode.show { display: flex; }
+    .regain-verify-passcode .modal {
+      background: #1a1a2e; border: 1px solid #2a2a4a;
+      border-radius: 12px; padding: 24px; width: 280px; text-align: center;
+    }
+    .regain-verify-passcode h3 {
+      font-size: 16px; margin-bottom: 16px; color: #fff;
+    }
+    .regain-verify-passcode input {
+      width: 120px; padding: 12px;
+      background: #0f1e3d; border: 1px solid #333;
+      border-radius: 8px; color: #fff; font-size: 24px;
+      text-align: center; letter-spacing: 8px; margin-bottom: 16px;
+    }
+    .regain-verify-passcode input:focus { outline: none; border-color: #e94560; }
+    .regain-verify-passcode .btns {
+      display: flex; gap: 10px;
+    }
+    .regain-verify-passcode .btns button {
+      flex: 1; padding: 12px; border: none;
+      border-radius: 8px; font-size: 14px; font-weight: 600;
+      cursor: pointer;
+    }
+    .regain-verify-passcode .btns .cancel-btn {
+      background: #333; color: #aaa;
+    }
+    .regain-verify-passcode .btns .ok-btn {
+      background: #e94560; color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -743,6 +963,7 @@
     <button data-page="music">🎵 Music</button>
     <button data-page="pip">🖼 PiP</button>
     <button data-page="jsonformat">{} JSON</button>
+    <button data-page="regain">⏱ Regain</button>
   </div>
 
   <!-- ═══ Tab Cleaner Page ═══ -->
@@ -1004,7 +1225,10 @@
               <div class="bar"></div>
               <div class="bar"></div>
               <div class="bar"></div>
-            </div>
+</div>
+
+  <!-- ═══ JSON Formatter Page ═══ -->
+  <div class="page" id="page-jsonformat">
           </span>
         </button>
         <div class="listen-timer" id="listenTimer"></div>
@@ -1048,7 +1272,105 @@
     </div>
   </div>
 
-  <!-- ═══ JSON Formatter Page ═══ -->
+  <!-- ═══ Regain Page ═══ -->
+  <div class="page" id="page-regain">
+    <div class="page-body">
+      <div class="regain-header">
+        <div>
+          <div class="title">⏱ Regain</div>
+          <div class="subtitle">Focus & block distractions</div>
+        </div>
+        <div class="regain-toggle">
+          <label class="switch">
+            <input type="checkbox" id="regainEnabled">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="regain-stats">
+        <div class="regain-stat">
+          <div class="val" id="regainStreak">0</div>
+          <div class="lbl">Streak</div>
+        </div>
+        <div class="regain-stat">
+          <div class="val" id="regainCoins">0</div>
+          <div class="lbl">Coins</div>
+        </div>
+        <div class="regain-stat">
+          <div class="val" id="regainFocusTime">0</div>
+          <div class="lbl">Focus Min</div>
+        </div>
+      </div>
+
+      <div class="regain-modes">
+        <button class="active" data-mode="focus">🎯 Focus Session</button>
+        <button data-mode="daily">📊 Daily Limits</button>
+      </div>
+
+      <!-- Focus Mode -->
+      <div class="regain-mode-content" id="regainFocusContent">
+        <div class="regain-timer-presets">
+          <button data-min="25" class="active">25<div class="lbl">min</div></button>
+          <button data-min="5">5<div class="lbl">min</div></button>
+          <button data-min="15">15<div class="lbl">min</div></button>
+          <button data-min="60">60<div class="lbl">min</div></button>
+        </div>
+        <div class="regain-timer-display">
+          <div class="time" id="regainTimerDisplay">25:00</div>
+          <div class="status" id="regainTimerStatus">Ready to focus</div>
+        </div>
+        <div class="regain-timer-btns">
+          <button class="regain-start-btn" id="regainStartBtn">Start Focus</button>
+        </div>
+      </div>
+
+      <!-- Daily Limits Mode -->
+      <div class="regain-mode-content" id="regainDailyContent">
+        <div class="regain-section">
+          <h3>🚫 Blocked Sites</h3>
+          <div class="regain-add-row">
+            <input type="text" id="regainBlockInput" placeholder="e.g. youtube.com">
+            <button id="regainBlockAdd">Add</button>
+          </div>
+          <div class="regain-suggestions">
+            <span class="regain-suggestion" data-site="youtube.com">YouTube</span>
+            <span class="regain-suggestion" data-site="instagram.com">Instagram</span>
+            <span class="regain-suggestion" data-site="twitter.com">Twitter</span>
+            <span class="regain-suggestion" data-site="x.com">X</span>
+            <span class="regain-suggestion" data-site="reddit.com">Reddit</span>
+            <span class="regain-suggestion" data-site="tiktok.com">TikTok</span>
+            <span class="regain-suggestion" data-site="facebook.com">Facebook</span>
+            <span class="regain-suggestion" data-site="netflix.com">Netflix</span>
+          </div>
+          <div class="regain-blocklist" id="regainBlocklist"></div>
+        </div>
+      </div>
+
+      <!-- Passcode -->
+      <div class="regain-section">
+        <h3>🔐 Passcode Protection</h3>
+        <div class="regain-passcode-row" id="regainPasscodeRow">
+          <label>Set 4-digit PIN to protect blocking</label>
+          <input type="password" id="regainPasscode" maxlength="4" placeholder="****">
+          <button class="set-btn" id="regainPasscodeSet">Set</button>
+          <button class="change-btn" id="regainPasscodeChange">Change</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passcode Verify Modal -->
+  <div class="regain-verify-passcode" id="regainVerifyModal">
+    <div class="modal">
+      <h3>Enter Passcode</h3>
+      <input type="password" id="regainVerifyInput" maxlength="4" placeholder="****">
+      <div class="btns">
+        <button class="cancel-btn" id="regainVerifyCancel">Cancel</button>
+        <button class="ok-btn" id="regainVerifyOk">Verify</button>
+      </div>
+    </div>
+  </div>
   <div class="page" id="page-jsonformat">
     <div class="page-body">
       <div class="nocookie-big-toggle">

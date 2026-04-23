@@ -17,6 +17,7 @@ document.querySelectorAll(".nav button").forEach((btn) => {
     if (btn.dataset.page === "unhook") loadUnhook();
     if (btn.dataset.page === "jsonformat") loadJsonFormat();
     if (btn.dataset.page === "music") { loadMusicHistory(); loadAcrFields(); }
+    if (btn.dataset.page === "regain") loadRegain();
   });
 });
 
@@ -1096,4 +1097,447 @@ function esc(s) {
 }
 function escA(s) {
   return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// ═══════════════════════════════════
+//  Regain - Focus & Blocking
+// ═══════════════════════════════════
+const regainEnabled = document.getElementById("regainEnabled");
+const regainStreak = document.getElementById("regainStreak");
+const regainCoins = document.getElementById("regainCoins");
+const regainFocusTime = document.getElementById("regainFocusTime");
+const regainModeBtns = document.querySelectorAll(".regain-modes button");
+const regainFocusContent = document.getElementById("regainFocusContent");
+const regainDailyContent = document.getElementById("regainDailyContent");
+const regainTimerPresets = document.querySelectorAll(".regain-timer-presets button");
+const regainTimerDisplay = document.getElementById("regainTimerDisplay");
+const regainTimerStatus = document.getElementById("regainTimerStatus");
+const regainStartBtn = document.getElementById("regainStartBtn");
+const regainBlockInput = document.getElementById("regainBlockInput");
+const regainBlockAdd = document.getElementById("regainBlockAdd");
+const regainBlocklist = document.getElementById("regainBlocklist");
+const regainPasscodeRow = document.getElementById("regainPasscodeRow");
+const regainPasscodeInput = document.getElementById("regainPasscode");
+const regainPasscodeSet = document.getElementById("regainPasscodeSet");
+const regainPasscodeChange = document.getElementById("regainPasscodeChange");
+const regainVerifyModal = document.getElementById("regainVerifyModal");
+const regainVerifyInput = document.getElementById("regainVerifyInput");
+
+let regainData = {
+  enabled: false,
+  passcode: "",
+  blocklist: [],
+  dailyLimits: {},
+  usageToday: {},
+  streak: 0,
+  coins: 0,
+  focusMinutes: 0,
+  lastFocusDate: "",
+  focusActive: false,
+  focusDuration: 25,
+  focusStartTime: 0,
+  focusTimerInterval: null,
+  currentMode: "focus"
+};
+
+let pendingAction = null;
+
+async function loadRegain() {
+  const data = await chrome.storage.local.get([
+    "regain_enabled", "regain_passcode", "regain_blocklist",
+    "regain_dailyLimits", "regain_usageToday", "regain_streak",
+    "regain_coins", "regain_focusMinutes", "regain_lastFocusDate",
+    "regain_focusActive", "regain_focusDuration", "regain_focusStartTime"
+  ]);
+
+  regainData = {
+    enabled: data.regain_enabled !== false,
+    passcode: data.regain_passcode || "",
+    blocklist: data.regain_blocklist || [],
+    dailyLimits: data.regain_dailyLimits || {},
+    usageToday: data.regain_usageToday || {},
+    streak: data.regain_streak || 0,
+    coins: data.regain_coins || 0,
+    focusMinutes: data.regain_focusMinutes || 0,
+    lastFocusDate: data.regain_lastFocusDate || "",
+    focusActive: data.regain_focusActive || false,
+    focusDuration: data.regain_focusDuration || 25,
+    focusStartTime: data.regain_focusStartTime || 0,
+    currentMode: "focus"
+  };
+
+  regainEnabled.checked = regainData.enabled;
+  regainStreak.textContent = regainData.streak;
+  regainCoins.textContent = regainData.coins;
+  regainFocusTime.textContent = regainData.focusMinutes;
+
+  if (regainData.passcode) {
+    regainPasscodeRow.classList.add("set");
+    regainPasscodeInput.value = "****";
+  }
+
+  renderBlocklist();
+  updateTimerDisplay();
+  
+  if (regainData.focusActive) {
+    resumeFocusTimer();
+  }
+
+  checkStreak();
+}
+
+function checkStreak() {
+  const today = new Date().toDateString();
+  if (regainData.lastFocusDate && regainData.lastFocusDate !== today) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (regainData.lastFocusDate === yesterday.toDateString()) {
+      // streak continues
+    } else {
+      // streak broken
+      regainData.streak = 0;
+      chrome.storage.local.set({ regain_streak: 0 });
+      regainStreak.textContent = 0;
+    }
+  }
+}
+
+regainEnabled.addEventListener("change", async () => {
+  regainData.enabled = regainEnabled.checked;
+  await chrome.storage.local.set({ regain_enabled: regainData.enabled });
+  if (regainData.enabled) {
+    activateBlocking();
+  } else {
+    deactivateBlocking();
+  }
+});
+
+regainModeBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    regainModeBtns.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    regainData.currentMode = btn.dataset.mode;
+    
+    if (btn.dataset.mode === "focus") {
+      regainFocusContent.classList.add("show");
+      regainDailyContent.classList.remove("show");
+    } else {
+      regainFocusContent.classList.remove("show");
+      regainDailyContent.classList.add("show");
+    }
+  });
+});
+
+regainTimerPresets.forEach(btn => {
+  btn.addEventListener("click", () => {
+    regainTimerPresets.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    regainData.focusDuration = parseInt(btn.dataset.min);
+    updateTimerDisplay();
+    chrome.storage.local.set({ regain_focusDuration: regainData.focusDuration });
+  });
+});
+
+function updateTimerDisplay() {
+  if (regainData.focusActive) {
+    const elapsed = Math.floor((Date.now() - regainData.focusStartTime) / 1000);
+    const remaining = Math.max(0, regainData.focusDuration * 60 - elapsed);
+    const mins = Math.floor(remaining / 60);
+    const secs = remaining % 60;
+    regainTimerDisplay.textContent = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    regainTimerDisplay.classList.add("running");
+    regainTimerStatus.textContent = "Focus session in progress...";
+    regainStartBtn.textContent = "Stop";
+    regainStartBtn.classList.remove("regain-start-btn");
+    regainStartBtn.classList.add("regain-stop-btn");
+  } else {
+    const mins = regainData.focusDuration;
+    regainTimerDisplay.textContent = `${mins.toString().padStart(2, "0")}:00`;
+    regainTimerDisplay.classList.remove("running");
+    regainTimerStatus.textContent = "Ready to focus";
+    regainStartBtn.textContent = "Start Focus";
+    regainStartBtn.classList.remove("regain-stop-btn");
+    regainStartBtn.classList.add("regain-start-btn");
+  }
+}
+
+regainStartBtn.addEventListener("click", () => {
+  if (regainData.focusActive) {
+    stopFocusSession();
+  } else {
+    if (regainData.passcode) {
+      showVerifyModal(() => startFocusSession());
+    } else {
+      startFocusSession();
+    }
+  }
+});
+
+function startFocusSession() {
+  regainData.focusActive = true;
+  regainData.focusStartTime = Date.now();
+  chrome.storage.local.set({
+    regain_focusActive: true,
+    regain_focusStartTime: regainData.focusStartTime
+  });
+  
+  activateBlocking();
+  updateTimerDisplay();
+  
+  // Send message to background to track focus
+  chrome.runtime.sendMessage({
+    type: "regainStartFocus",
+    duration: regainData.focusDuration,
+    startTime: regainData.focusStartTime,
+    blocklist: regainData.blocklist
+  }).catch(() => {});
+  
+  // Start local timer
+  regainData.focusTimerInterval = setInterval(() => {
+    updateTimerDisplay();
+    const elapsed = Math.floor((Date.now() - regainData.focusStartTime) / 1000);
+    if (elapsed >= regainData.focusDuration * 60) {
+      completeFocusSession();
+    }
+  }, 1000);
+}
+
+function resumeFocusTimer() {
+  updateTimerDisplay();
+  regainData.focusTimerInterval = setInterval(() => {
+    updateTimerDisplay();
+    const elapsed = Math.floor((Date.now() - regainData.focusStartTime) / 1000);
+    if (elapsed >= regainData.focusDuration * 60) {
+      completeFocusSession();
+    }
+  }, 1000);
+}
+
+function stopFocusSession() {
+  clearInterval(regainData.focusTimerInterval);
+  regainData.focusActive = false;
+  chrome.storage.local.set({ regain_focusActive: false });
+  updateTimerDisplay();
+  
+  chrome.runtime.sendMessage({ type: "regainStopFocus" }).catch(() => {});
+}
+
+function completeFocusSession() {
+  clearInterval(regainData.focusTimerInterval);
+  regainData.focusActive = false;
+  
+  // Update stats
+  const today = new Date().toDateString();
+  const wasYesterday = regainData.lastFocusDate !== today;
+  
+  if (regainData.lastFocusDate !== today) {
+    if (regainData.lastFocusDate) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      if (regainData.lastFocusDate === yesterday.toDateString()) {
+        regainData.streak++;
+      } else {
+        regainData.streak = 1;
+      }
+    } else {
+      regainData.streak = 1;
+    }
+  }
+  
+  regainData.focusMinutes += regainData.focusDuration;
+  regainData.coins += regainData.focusDuration * 2;
+  regainData.lastFocusDate = today;
+  
+  chrome.storage.local.set({
+    regain_focusActive: false,
+    regain_streak: regainData.streak,
+    regain_focusMinutes: regainData.focusMinutes,
+    regain_coins: regainData.coins,
+    regain_lastFocusDate: today
+  });
+  
+  regainStreak.textContent = regainData.streak;
+  regainCoins.textContent = regainData.coins;
+  regainFocusTime.textContent = regainData.focusMinutes;
+  
+  updateTimerDisplay();
+  
+  // Show notification
+  if (chrome.notifications) {
+    chrome.notifications.create({
+      type: "basic",
+      iconUrl: "icon48.png",
+      title: "Focus Complete! 🎉",
+      message: `Great job! You focused for ${regainData.focusDuration} minutes. +${regainData.focusDuration * 2} coins!`
+    });
+  }
+  
+  deactivateBlocking();
+  
+  chrome.runtime.sendMessage({ type: "regainFocusComplete" }).catch(() => {});
+}
+
+regainBlockAdd.addEventListener("click", addToBlocklist);
+regainBlockInput.addEventListener("keydown", (e) => { if (e.key === "Enter") addToBlocklist(); });
+
+function addToBlocklist() {
+  let site = regainBlockInput.value.trim().toLowerCase();
+  if (!site) return;
+  site = site.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+  
+  if (regainData.blocklist.includes(site)) {
+    regainBlockInput.value = "";
+    return;
+  }
+  
+  regainData.blocklist.push(site);
+  chrome.storage.local.set({ regain_blocklist: regainData.blocklist });
+  regainBlockInput.value = "";
+  renderBlocklist();
+  
+  if (regainData.enabled && !regainData.focusActive) {
+    activateBlocking();
+  }
+}
+
+document.querySelectorAll(".regain-suggestion").forEach(el => {
+  el.addEventListener("click", () => {
+    regainBlockInput.value = el.dataset.site;
+    addToBlocklist();
+  });
+});
+
+function renderBlocklist() {
+  if (!regainData.blocklist.length) {
+    regainBlocklist.innerHTML = '<div class="regain-empty">No sites blocked. Add some above!</div>';
+    return;
+  }
+  
+  const limitOptions = [5, 10, 15, 20];
+  
+  regainBlocklist.innerHTML = regainData.blocklist.map(site => {
+    const currentLimit = regainData.dailyLimits[site] || 0;
+    const limitBtns = limitOptions.map(mins => 
+      `<button class="limit-btn ${currentLimit === mins ? 'active' : ''}" data-site="${escA(site)}" data-mins="${mins}">${mins}</button>`
+    ).join('');
+    return `
+      <div class="item">
+        <span class="site">${esc(site)}</span>
+        <div class="limit-btns">${limitBtns}</div>
+        <button data-site="${escA(site)}">&times;</button>
+      </div>
+    `;
+  }).join("");
+  
+  regainBlocklist.querySelectorAll(".item > button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const site = btn.dataset.site;
+      if (regainData.passcode) {
+        pendingAction = () => removeFromBlocklist(site);
+        showVerifyModal(() => { pendingAction(); pendingAction = null; });
+      } else {
+        removeFromBlocklist(site);
+      }
+    });
+  });
+  
+  regainBlocklist.querySelectorAll(".limit-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const site = btn.dataset.site;
+      const mins = parseInt(btn.dataset.mins);
+      regainData.dailyLimits[site] = mins;
+      chrome.storage.local.set({ regain_dailyLimits: regainData.dailyLimits });
+      renderBlocklist();
+      
+      // Notify background to start tracking this site
+      chrome.runtime.sendMessage({
+        type: "regainUpdateDailyLimit",
+        site: site,
+        limit: mins
+      }).catch(() => {});
+    });
+  });
+}
+
+function removeFromBlocklist(site) {
+  regainData.blocklist = regainData.blocklist.filter(s => s !== site);
+  delete regainData.dailyLimits[site];
+  chrome.storage.local.set({
+    regain_blocklist: regainData.blocklist,
+    regain_dailyLimits: regainData.dailyLimits
+  });
+  renderBlocklist();
+}
+
+regainPasscodeSet.addEventListener("click", async () => {
+  const code = regainPasscodeInput.value;
+  if (code.length !== 4 || !/^\d{4}$/.test(code)) {
+    alert("Please enter a 4-digit PIN");
+    return;
+  }
+  regainData.passcode = code;
+  await chrome.storage.local.set({ regain_passcode: code });
+  regainPasscodeRow.classList.add("set");
+  regainPasscodeInput.value = "****";
+});
+
+regainPasscodeChange.addEventListener("click", () => {
+  regainData.passcode = "";
+  regainPasscodeRow.classList.remove("set");
+  regainPasscodeInput.value = "";
+  chrome.storage.local.remove("regain_passcode");
+});
+
+function showVerifyModal(callback) {
+  regainVerifyModal.classList.add("show");
+  regainVerifyInput.value = "";
+  regainVerifyInput.focus();
+  pendingAction = callback;
+}
+
+regainVerifyInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") verifyPasscode();
+});
+
+document.getElementById("regainVerifyCancel").addEventListener("click", () => {
+  regainVerifyModal.classList.remove("show");
+  pendingAction = null;
+});
+
+document.getElementById("regainVerifyOk").addEventListener("click", verifyPasscode);
+
+function verifyPasscode() {
+  if (regainVerifyInput.value === regainData.passcode) {
+    regainVerifyModal.classList.remove("show");
+    if (pendingAction) {
+      pendingAction();
+    }
+  } else {
+    regainVerifyInput.value = "";
+    regainVerifyInput.placeholder = "Wrong!";
+    setTimeout(() => { regainVerifyInput.placeholder = "****"; }, 1000);
+  }
+}
+
+regainVerifyModal.addEventListener("click", (e) => {
+  if (e.target === regainVerifyModal) {
+    regainVerifyModal.classList.remove("show");
+    pendingAction = null;
+  }
+});
+
+function activateBlocking() {
+  if (!regainData.blocklist.length) return;
+  chrome.runtime.sendMessage({
+    type: "regainActivateBlocking",
+    blocklist: regainData.blocklist,
+    isFocusSession: regainData.focusActive,
+    focusDuration: regainData.focusActive ? regainData.focusDuration : 0,
+    focusStartTime: regainData.focusActive ? regainData.focusStartTime : 0
+  }).catch(() => {});
+}
+
+function deactivateBlocking() {
+  chrome.runtime.sendMessage({ type: "regainDeactivateBlocking" }).catch(() => {});
 }

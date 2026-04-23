@@ -223,3 +223,363 @@ chrome.runtime.onInstalled.addListener(() => {
     }
   });
 });
+
+// ═══════════════════════════════════
+//  Regain - Focus & Blocking
+// ═══════════════════════════════════
+let regainBlockingActive = false;
+let regainBlocklist = [];
+let regainFocusSession = false;
+
+// Daily limits tracking
+let regainDailyLimits = {};
+let regainUsageToday = {};
+let regainLastResetDate = "";
+let regainDeactivatedToday = [];
+let regainActiveTabSite = null;
+let regainTrackingInterval = null;
+
+const BLOCKED_RESPONSE = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Blocked</title>
+  <style>
+    body { background: #1a1a2e; color: #e0e0e0; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .container { text-align: center; padding: 40px; }
+    .icon { font-size: 64px; margin-bottom: 20px; }
+    h1 { font-size: 24px; margin-bottom: 10px; }
+    p { color: #888; font-size: 14px; }
+    .timer { font-size: 48px; font-weight: 700; color: #e94560; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">⏱</div>
+    <h1>Stay Focused!</h1>
+    <p>This site is blocked during your focus session.</p>
+  </div>
+</body>
+</html>
+`;
+
+function checkDailyLimitReached(site) {
+  const limit = regainDailyLimits[site] || 0;
+  const used = regainUsageToday[site] || 0;
+  return limit > 0 && used >= limit;
+}
+
+function getSiteFromUrl(url) {
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, "");
+    return hostname;
+  } catch {
+    return null;
+  }
+}
+
+function isBlockedSite(site) {
+  if (!site || !regainBlocklist.length) return false;
+  if (regainDeactivatedToday.includes(site)) return false;
+  return regainBlocklist.some(blocked => 
+    site.includes(blocked) || blocked.includes(site)
+  );
+}
+
+function startTrackingTab(tabId, site) {
+  stopTrackingTab();
+  
+  if (!isBlockedSite(site)) return;
+  
+  regainActiveTabSite = site;
+  
+  regainTrackingInterval = setInterval(() => {
+    const now = new Date();
+    const today = now.toDateString();
+    
+    // Check midnight reset
+    if (regainLastResetDate !== today) {
+      resetDailyUsage();
+      return;
+    }
+    
+    // Increment usage
+    if (!regainUsageToday[site]) regainUsageToday[site] = 0;
+    regainUsageToday[site]++;
+    
+    chrome.storage.local.set({ regain_usageToday: regainUsageToday });
+    
+    // Check if limit reached
+    if (checkDailyLimitReached(site)) {
+      stopTrackingTab();
+      // Redirect to blocked page
+      chrome.tabs.update(tabId, {
+        url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site]}&used=${regainUsageToday[site]}&reason=limit`
+      });
+    }
+  }, 60000); // Track every minute
+}
+
+function stopTrackingTab() {
+  if (regainTrackingInterval) {
+    clearInterval(regainTrackingInterval);
+    regainTrackingInterval = null;
+  }
+  regainActiveTabSite = null;
+}
+
+function resetDailyUsage() {
+  const now = new Date();
+  regainLastResetDate = now.toDateString();
+  regainUsageToday = {};
+  regainDeactivatedToday = [];
+  
+  chrome.storage.local.set({
+    regain_usageToday: {},
+    regain_lastResetDate: regainLastResetDate,
+    regain_deactivatedToday: []
+  });
+}
+
+// Initialize daily tracking
+async function initDailyTracking() {
+  const data = await chrome.storage.local.get([
+    "regain_blocklist",
+    "regain_dailyLimits", 
+    "regain_usageToday",
+    "regain_lastResetDate",
+    "regain_deactivatedToday"
+  ]);
+  
+  regainBlocklist = data.regain_blocklist || [];
+  regainDailyLimits = data.regain_dailyLimits || {};
+  regainUsageToday = data.regain_usageToday || {};
+  regainLastResetDate = data.regain_lastResetDate || "";
+  regainDeactivatedToday = data.regain_deactivatedToday || [];
+  
+  const today = new Date().toDateString();
+  if (regainLastResetDate !== today) {
+    resetDailyUsage();
+  }
+  
+  // Listen for tab activation to track time
+  chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      if (tab.url && tab.url.startsWith("http")) {
+        const site = getSiteFromUrl(tab.url);
+        if (site) {
+          startTrackingTab(tabId, site);
+        }
+      }
+    } catch (e) {}
+  });
+  
+  // Also track when tab URL changes
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.url && tab.active) {
+      const site = getSiteFromUrl(changeInfo.url);
+      if (site) {
+        startTrackingTab(tabId, site);
+      }
+    }
+  });
+  
+  // Create midnight reset alarm
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setDate(midnight.getDate() + 1);
+  midnight.setHours(0, 0, 0, 0);
+  const msUntilMidnight = midnight.getTime() - now.getTime();
+  
+  chrome.alarms.create("regainMidnightReset", { delayInMinutes: msUntilMidnight / 60000 });
+  
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === "regainMidnightReset") {
+      resetDailyUsage();
+      // Reschedule for next midnight
+      const m = new Date();
+      m.setDate(m.getDate() + 1);
+      m.setHours(0, 0, 0, 0);
+      chrome.alarms.create("regainMidnightReset", { delayInMinutes: (m.getTime() - Date.now()) / 60000 });
+    }
+  });
+  
+  // Listen for messages to add time or deactivate
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === "regainAddTime") {
+      const { site, mins } = msg;
+      regainUsageToday[site] = Math.max(0, (regainUsageToday[site] || 0) - mins);
+      chrome.storage.local.set({ regain_usageToday: regainUsageToday });
+      sendResponse({ success: true });
+    }
+    
+    if (msg.type === "regainDeactivateSite") {
+      const { site } = msg;
+      if (!regainDeactivatedToday.includes(site)) {
+        regainDeactivatedToday.push(site);
+        chrome.storage.local.set({ regain_deactivatedToday: regainDeactivatedToday });
+      }
+      sendResponse({ success: true });
+    }
+    
+    if (msg.type === "regainGetUsage") {
+      sendResponse({ 
+        usage: regainUsageToday,
+        limits: regainDailyLimits,
+        deactivated: regainDeactivatedToday
+      });
+    }
+    
+    return true;
+  });
+}
+
+// Initialize on load
+initDailyTracking();
+
+async function updateRegainBlockingRules(blocklist, activate, focusDuration = 0, focusStartTime = 0) {
+  if (!blocklist || !blocklist.length) return;
+  
+  const baseUrl = "blocked.html";
+  const rules = blocklist.map((site, index) => {
+    let redirectUrl = null;
+    if (activate) {
+      const params = new URLSearchParams();
+      params.set('site', site);
+      if (focusDuration > 0 && focusStartTime > 0) {
+        params.set('reason', 'focus');
+        params.set('duration', focusDuration);
+        params.set('startTime', focusStartTime);
+      }
+      redirectUrl = baseUrl + '?' + params.toString();
+    }
+    
+    return {
+      id: index + 1,
+      priority: 1,
+      action: {
+        type: activate ? "redirect" : "allow",
+        redirect: redirectUrl ? { extensionPage: redirectUrl } : undefined
+      },
+      condition: {
+        urlFilter: `.*${site.replace(/\./g, "\\.")}.*`,
+        resourceTypes: ["main_frame"]
+      }
+    };
+  });
+  
+  if (activate) {
+    try {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        addRules: rules,
+        removeRuleIds: rules.map(r => r.id)
+      });
+    } catch (e) {
+      // Fallback: use webRequest for older browsers
+      console.log("Regain blocking via webRequest");
+    }
+  } else {
+    try {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: rules.map(r => r.id)
+      });
+    } catch (e) {}
+  }
+}
+
+function activateRegainBlocking(blocklist, isFocusSession, focusDuration = 0, focusStartTime = 0) {
+  regainBlockingActive = true;
+  regainBlocklist = blocklist;
+  regainFocusSession = isFocusSession;
+  
+  // Store current blocklist
+  chrome.storage.local.set({ 
+    regain_currentBlocklist: blocklist,
+    regain_blockingActive: true,
+    regain_focusDuration: focusDuration,
+    regain_focusStartTime: focusStartTime
+  });
+  
+  if (isFocusSession && focusDuration > 0 && focusStartTime > 0) {
+    updateRegainBlockingRules(blocklist, true, focusDuration, focusStartTime);
+  } else {
+    updateRegainBlockingRules(blocklist, true);
+  }
+}
+
+function deactivateRegainBlocking() {
+  regainBlockingActive = false;
+  regainFocusSession = false;
+  
+  chrome.storage.local.set({ 
+    regain_blockingActive: false 
+  });
+  
+  updateRegainBlockingRules(regainBlocklist, false);
+}
+
+function showRegainNotification(title, message) {
+  if (chrome.notifications) {
+    chrome.notifications.create({
+      type: "basic",
+      iconUrl: "icon48.png",
+      title: title,
+      message: message
+    });
+  }
+}
+
+// Handle messages from popup
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === "regainStartFocus") {
+    activateRegainBlocking(
+      msg.blocklist || [], 
+      true, 
+      msg.duration || 0, 
+      msg.startTime || 0
+    );
+    sendResponse({ success: true });
+  }
+  
+  if (msg.type === "regainStopFocus") {
+    deactivateRegainBlocking();
+    sendResponse({ success: true });
+  }
+  
+  if (msg.type === "regainFocusComplete") {
+    deactivateRegainBlocking();
+    sendResponse({ success: true });
+  }
+  
+  if (msg.type === "regainActivateBlocking") {
+    activateRegainBlocking(
+      msg.blocklist || [], 
+      msg.isFocusSession || false,
+      msg.focusDuration || 0,
+      msg.focusStartTime || 0
+    );
+    sendResponse({ success: true });
+  }
+  
+  if (msg.type === "regainDeactivateBlocking") {
+    deactivateRegainBlocking();
+    sendResponse({ success: true });
+  }
+  
+  if (msg.type === "regainUpdateDailyLimit") {
+    const { site, limit } = msg;
+    regainDailyLimits[site] = limit;
+    if (!regainBlocklist.includes(site)) {
+      regainBlocklist.push(site);
+    }
+    chrome.storage.local.set({ 
+      regain_dailyLimits: regainDailyLimits,
+      regain_blocklist: regainBlocklist
+    });
+    sendResponse({ success: true });
+  }
+  
+  return true;
+});
