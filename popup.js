@@ -16,7 +16,7 @@ document.querySelectorAll(".nav button").forEach((btn) => {
     if (btn.dataset.page === "livecss") loadLiveCSS();
     if (btn.dataset.page === "unhook") loadUnhook();
     if (btn.dataset.page === "jsonformat") loadJsonFormat();
-    if (btn.dataset.page === "music") { loadMusicHistory(); loadAcrFields(); startListening(); }
+    if (btn.dataset.page === "music") { loadMusicHistory(); loadAcrFields(); }
   });
 });
 
