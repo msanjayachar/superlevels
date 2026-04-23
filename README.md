@@ -4,7 +4,7 @@ by [@levelsio](https://x.com/levelsio)
 
 [![GitHub stars](https://img.shields.io/github/stars/levelsio/superlevels?style=social)](https://github.com/levelsio/superlevels/stargazers)
 
-Please star this repo if you like it!
+Please star SuperLevels if you like it!
 
 A super Chrome extension that replaces 12+ separate extensions with one open-source, privacy-respecting package.
 
