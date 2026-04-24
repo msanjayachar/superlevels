@@ -272,7 +272,7 @@ function checkDailyLimitReached(site) {
 
 function getSiteFromUrl(url) {
   try {
-    const hostname = new URL(url).hostname.replace(/^www\./, "");
+    const hostname = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
     return hostname;
   } catch {
     return null;
@@ -282,9 +282,13 @@ function getSiteFromUrl(url) {
 function isBlockedSite(site) {
   if (!site || !regainBlocklist.length) return false;
   if (regainDeactivatedToday.includes(site)) return false;
-  return regainBlocklist.some(blocked => 
-    site.includes(blocked) || blocked.includes(site)
-  );
+  const normalizedSite = site.replace(/^www\./, '');
+  return regainBlocklist.some(blocked => {
+    const normalizedBlocked = blocked.replace(/^www\./, '');
+    return normalizedSite === normalizedBlocked || 
+           normalizedSite.endsWith('.' + normalizedBlocked) ||
+           normalizedBlocked.endsWith('.' + normalizedSite);
+  });
 }
 
 function startTrackingTab(tabId, site) {
@@ -306,7 +310,9 @@ function startTrackingTab(tabId, site) {
     
     // Increment usage
     if (!regainUsageToday[site]) regainUsageToday[site] = 0;
-    regainUsageToday[site]++;
+    // For limits < 5 min, use smaller increment (1/6 per 10s = 1 per minute)
+    const limit = regainDailyLimits[site] || 0;
+    regainUsageToday[site] += (limit > 0 && limit < 5) ? (1/6) : 1;
     
     chrome.storage.local.set({ regain_usageToday: regainUsageToday });
     
@@ -318,7 +324,7 @@ function startTrackingTab(tabId, site) {
         url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site]}&used=${regainUsageToday[site]}&reason=limit`
       });
     }
-  }, 60000); // Track every minute
+  }, 10000); // Track every 10 seconds
 }
 
 function stopTrackingTab() {
@@ -464,7 +470,7 @@ async function updateRegainBlockingRules(blocklist, activate, focusDuration = 0,
         redirect: redirectUrl ? { extensionPage: redirectUrl } : undefined
       },
       condition: {
-        urlFilter: `.*${site.replace(/\./g, "\\.")}.*`,
+        urlFilter: `https?://([wW]{3}\\.)?${site.replace(/\./g, "\\.")}(/.*)?`,
         resourceTypes: ["main_frame"]
       }
     };
