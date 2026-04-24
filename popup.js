@@ -1398,6 +1398,11 @@ function doAddToBlocklist() {
   if (!site) return;
   site = site.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
   
+  const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/;
+  if (!domainRegex.test(site)) {
+    return;
+  }
+  
   if (regainData.blocklist.includes(site)) {
     regainBlockInput.value = "";
     return;

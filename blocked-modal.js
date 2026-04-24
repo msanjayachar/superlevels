@@ -406,9 +406,18 @@
             type: 'regainAddTime',
             site: site,
             secs: secs
-          }, function() {
-            console.log('[Regain] Time added, removing modal');
-            host.remove();
+          }, function(response) {
+            console.log('[Regain] Time added, checking if limit still reached');
+            chrome.storage.local.get(['regain_dailyLimits', 'regain_usageToday'], function(data) {
+              var limit = (data.regain_dailyLimits || {})[site] || 0;
+              var used = (data.regain_usageToday || {})[site] || 0;
+              if (limit > 0 && used >= limit) {
+                console.log('[Regain] Limit still reached, keeping modal');
+                return;
+              }
+              console.log('[Regain] Limit no longer reached, removing modal');
+              host.remove();
+            });
           });
         } catch (err) {
           console.error('[Regain] Error:', err);

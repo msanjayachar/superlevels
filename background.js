@@ -702,24 +702,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const { site, limit } = msg;
     console.log('[DEBUG] regainUpdateDailyLimit:', { site, limit, regainBlocklist, regainDailyLimits });
     regainDailyLimits[site] = limit;
-    if (!regainBlocklist.includes(site)) {
-      regainBlocklist.push(site);
-    }
     chrome.storage.local.set({ 
-      regain_dailyLimits: regainDailyLimits,
-      regain_blocklist: regainBlocklist
+      regain_dailyLimits: regainDailyLimits
     });
     sendResponse({ success: true });
-    
-    // Auto-start tracking if this site is currently active
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0] && tabs[0].url) {
-        const activeSite = getSiteFromUrl(tabs[0].url);
-        if (activeSite === site && isBlockedSite(site)) {
-          startTrackingTab(tabs[0].id, site);
-        }
-      }
-    });
   }
   
   return true;
