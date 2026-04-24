@@ -547,6 +547,13 @@ async function initDailyTracking() {
       }
     }
     
+    if (msg.type === "regainActivateSite") {
+      const { site } = msg;
+      regainDeactivatedToday = regainDeactivatedToday.filter(s => s !== site);
+      chrome.storage.local.set({ regain_deactivatedToday: regainDeactivatedToday });
+      sendResponse({ success: true });
+    }
+
     if (msg.type === "regainGetUsage") {
       sendResponse({ 
         usage: regainUsageToday,

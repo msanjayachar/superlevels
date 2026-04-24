@@ -256,29 +256,42 @@
         background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-end) 100%);
         color: #fff;
       }
-      
+
+      .btn-primary:disabled {
+        background: #555;
+        color: #888;
+      }
+
+      .btn-primary.btn-ready {
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-end) 100%);
+        color: #fff;
+      }
+
       .btn:disabled {
         cursor: not-allowed;
-        opacity: 0.6;
       }
-      
-      .btn:not(:disabled):hover {
+
+      .btn:not(:disabled):not(.btn-ready):hover {
         transform: scale(1.02);
       }
-      
+
       .btn .countdown-bar {
         position: absolute;
         bottom: 0;
         left: 0;
         height: 3px;
-        background: rgba(255, 255, 255, 0.4);
+        background: #888;
         width: 0%;
-        transition: width linear;
       }
-      
+
       .btn:disabled .countdown-bar {
         width: 100%;
-        background: rgba(100, 255, 100, 0.4);
+        background: rgba(100, 255, 100, 0.6);
+      }
+
+      .btn:not(:disabled) .countdown-bar {
+        width: 100%;
+        background: rgba(100, 255, 100, 0.6);
       }
       
       .footer {
@@ -330,11 +343,11 @@
       '</div>' +
       '<div class="msg">Add more time to continue</div>' +
       '<div class="btns">' +
-      '<button class="btn btn-primary" data-secs="10"><span>+10s</span><div class="countdown-bar"></div></button>' +
-      '<button class="btn btn-primary" data-secs="300"><span>+5m</span><div class="countdown-bar"></div></button>' +
-      '<button class="btn btn-primary" data-secs="600"><span>+10m</span><div class="countdown-bar"></div></button>' +
-      '<button class="btn btn-primary" data-secs="900"><span>+15m</span><div class="countdown-bar"></div></button>' +
-      '<button class="btn btn-primary" data-secs="1200"><span>+20m</span><div class="countdown-bar"></div></button>' +
+      '<button class="btn btn-primary" data-secs="10" data-loader="2"><span>+10s</span><div class="countdown-bar"></div></button>' +
+      '<button class="btn btn-primary" data-secs="300" data-loader="5"><span>+5m</span><div class="countdown-bar"></div></button>' +
+      '<button class="btn btn-primary" data-secs="600" data-loader="10"><span>+10m</span><div class="countdown-bar"></div></button>' +
+      '<button class="btn btn-primary" data-secs="900" data-loader="15"><span>+15m</span><div class="countdown-bar"></div></button>' +
+      '<button class="btn btn-primary" data-secs="1200" data-loader="20"><span>+20m</span><div class="countdown-bar"></div></button>' +
       '</div>' +
       '</div>' +
       '<div class="footer">' +
@@ -350,12 +363,43 @@
     // Add button event listeners
     var buttons = shadow.querySelectorAll('button[data-secs]');
     buttons.forEach(function(btn) {
+      var secs = parseInt(btn.getAttribute('data-secs'));
+      var loaderSecs = parseInt(btn.getAttribute('data-loader'));
+      var countdownBar = btn.querySelector('.countdown-bar');
+
+      // Set initial disabled state
+      btn.disabled = true;
+      if (countdownBar) {
+        var startTime = null;
+        var duration = loaderSecs * 1000;
+
+        function animateLoader(timestamp) {
+          if (!startTime) startTime = timestamp;
+          var progress = Math.min((timestamp - startTime) / duration, 1);
+          var percent = progress * 100;
+
+          countdownBar.style.width = percent + '%';
+
+          if (progress < 1) {
+            requestAnimationFrame(animateLoader);
+          } else {
+            btn.disabled = false;
+            btn.classList.add('btn-ready');
+          }
+        }
+
+        requestAnimationFrame(animateLoader);
+      } else {
+        btn.disabled = false;
+        btn.classList.add('btn-ready');
+      }
+
       btn.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
         var secs = parseInt(this.getAttribute('data-secs'));
         console.log('[Regain] Add time clicked:', secs);
-        
+
         // Send message to background
         try {
           chrome.runtime.sendMessage({

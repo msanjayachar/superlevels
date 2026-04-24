@@ -1147,7 +1147,8 @@ async function loadRegain() {
     "regain_enabled", "regain_passcode", "regain_blocklist",
     "regain_dailyLimits", "regain_usageToday", "regain_streak",
     "regain_coins", "regain_focusMinutes", "regain_lastFocusDate",
-    "regain_focusActive", "regain_focusDuration", "regain_focusStartTime"
+    "regain_focusActive", "regain_focusDuration", "regain_focusStartTime",
+    "regain_deactivatedToday"
   ]);
 
   regainData = {
@@ -1156,6 +1157,7 @@ async function loadRegain() {
     blocklist: data.regain_blocklist || [],
     dailyLimits: data.regain_dailyLimits || {},
     usageToday: data.regain_usageToday || {},
+    deactivatedToday: data.regain_deactivatedToday || [],
     streak: data.regain_streak || 0,
     coins: data.regain_coins || 0,
     focusMinutes: data.regain_focusMinutes || 0,
@@ -1448,21 +1450,53 @@ function renderBlocklist() {
   regainBlocklist.innerHTML = regainData.blocklist.map(site => {
     const currentLimit = regainData.dailyLimits[site] || 0;
     const currentUsage = regainData.usageToday[site] || 0;
+    const isDeactivated = regainData.deactivatedToday.includes(site);
     const limitBtns = limitOptions.map(secs => {
       const label = secs < 60 ? `${secs}s` : `${secs / 60}m`;
+      const loaderSecs = secs >= 300 ? Math.round(secs / 60) : 0;
+      if (loaderSecs > 0) {
+        return `<button class="limit-btn has-loader" data-site="${escA(site)}" data-mins="${secs}" data-loader="${loaderSecs}">
+          <div class="loader-ring"></div>
+          <span class="loader-label">${loaderSecs}</span>
+          <span class="limit-label">${label}</span>
+        </button>`;
+      }
       return `<button class="limit-btn ${currentLimit === secs ? 'active' : ''}" data-site="${escA(site)}" data-mins="${secs}">${label}</button>`;
     }).join('');
+    const btnLabel = isDeactivated ? "A" : "D";
+    const btnClass = isDeactivated ? "toggle-btn active" : "toggle-btn";
     return `
       <div class="item">
         <span class="site">${esc(site)}</span>
         <span class="usage-badge"><span class="used">${formatTime(currentUsage)}</span></span>
         <div class="limit-btns">${limitBtns}</div>
+        <button class="${btnClass}" data-site="${escA(site)}">${btnLabel}</button>
         <button data-site="${escA(site)}">&times;</button>
       </div>
     `;
   }).join("");
-  
-  regainBlocklist.querySelectorAll(".item > button").forEach(btn => {
+
+  regainBlocklist.querySelectorAll(".toggle-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const site = btn.dataset.site;
+      const isDeactivated = regainData.deactivatedToday.includes(site);
+      if (isDeactivated) {
+        regainData.deactivatedToday = regainData.deactivatedToday.filter(s => s !== site);
+        chrome.storage.local.set({ regain_deactivatedToday: regainData.deactivatedToday });
+        chrome.runtime.sendMessage({ type: "regainActivateSite", site: site }).catch(() => {});
+      } else {
+        if (!regainData.deactivatedToday.includes(site)) {
+          regainData.deactivatedToday.push(site);
+          chrome.storage.local.set({ regain_deactivatedToday: regainData.deactivatedToday });
+          chrome.runtime.sendMessage({ type: "regainDeactivateSite", site: site }).catch(() => {});
+        }
+      }
+      renderBlocklist();
+    });
+  });
+
+  regainBlocklist.querySelectorAll(".item > button:not(.toggle-btn)").forEach(btn => {
     btn.addEventListener("click", () => {
       const site = btn.dataset.site;
       if (regainData.passcode) {
@@ -1490,6 +1524,29 @@ function renderBlocklist() {
         limit: secs
       }).catch(() => {});
     });
+  });
+
+  // Start loaders for buttons that need them
+  regainBlocklist.querySelectorAll(".limit-btn.has-loader:not(.enabled)").forEach(btn => {
+    const totalSecs = parseInt(btn.dataset.loader);
+    let remaining = totalSecs;
+    btn.style.setProperty("--progress", "100%");
+
+    const interval = setInterval(() => {
+      remaining--;
+      btn.querySelector(".loader-label").textContent = remaining;
+      const progress = ((totalSecs - remaining) / totalSecs) * 100;
+      btn.style.setProperty("--progress", progress + "%");
+
+      if (remaining <= 0) {
+        clearInterval(interval);
+        btn.classList.add("enabled");
+        btn.querySelector(".limit-label").textContent = btn.dataset.mins < 60 ? btn.dataset.mins + "s" : (btn.dataset.mins / 60) + "m";
+      }
+    }, 1000);
+
+    // Immediately show first second
+    btn.querySelector(".loader-label").textContent = remaining;
   });
 }
 
