@@ -3,7 +3,20 @@
 <head>
   <meta charset="utf-8">
   <title>Blocked - Regain</title>
+  <link rel="stylesheet" href="shared-modal.css">
   <style>
+    :root {
+      --spacing-xxl: 60px;
+      --spacing-sm: 8px;
+      --spacing-md: 16px;
+      --spacing-lg: 24px;
+      --spacing-btn: 10px;
+      --font-size-sm: 12px;
+      --font-size-md: 13px;
+      --font-size-lg: 15px;
+      --font-size-2xl: 28px;
+      --font-size-3xl: 36px;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -64,15 +77,15 @@
     .reason-stats {
       display: flex;
       justify-content: center;
-      gap: 30px;
+      gap: var(--spacing-xxl);
     }
     .reason-stat .val {
-      font-size: 28px;
+      font-size: var(--font-size-2xl);
       font-weight: 700;
       color: #e94560;
     }
     .reason-stat .lbl {
-      font-size: 11px;
+      font-size: var(--font-size-sm);
       color: #888;
     }
     .timer {
@@ -90,15 +103,15 @@
     }
     .add-time-btns {
       display: flex;
-      gap: 8px;
+      gap: var(--spacing-btn);
       justify-content: center;
-      margin-bottom: 16px;
+      margin-bottom: var(--spacing-md);
     }
     .add-time-btn {
       position: relative;
       flex: 1;
-      min-width: 60px;
-      padding: 14px 8px;
+      min-width: 80px;
+      padding: 14px 12px;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       border: none;
       border-radius: 8px;

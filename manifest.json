@@ -48,7 +48,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["blocked.html", "blocked.js", "blocked-modal.html", "blocked-modal.js"],
+      "resources": ["blocked.html", "blocked.js", "blocked-modal.html", "blocked-modal.js", "shared-modal.css"],
       "matches": ["<all_urls>"]
     }
   ]
