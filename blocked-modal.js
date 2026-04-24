@@ -41,6 +41,13 @@
     if (secs < 60) return secs + 's';
     const mins = Math.floor(secs / 60);
     const remainingSecs = secs % 60;
+    if (mins >= 60) {
+      const hours = Math.floor(mins / 60);
+      const remainingMins = mins % 60;
+      if (remainingMins === 0) return hours + 'h';
+      if (remainingSecs === 0) return hours + 'h ' + remainingMins + 'm';
+      return hours + 'h ' + remainingMins + 'm ' + remainingSecs + 's';
+    }
     if (remainingSecs === 0) return mins + 'm';
     return mins + 'm ' + remainingSecs + 's';
   }
