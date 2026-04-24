@@ -467,8 +467,9 @@ async function initDailyTracking() {
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "regainAddTime") {
       const { site, secs } = msg;
-      regainUsageToday[site] = Math.max(0, (regainUsageToday[site] || 0) - secs);
-      chrome.storage.local.set({ regain_usageToday: regainUsageToday });
+      // Increase limit, NOT decrease usage - usage is a running record
+      regainDailyLimits[site] = (regainDailyLimits[site] || 0) + secs;
+      chrome.storage.local.set({ regain_dailyLimits: regainDailyLimits });
       sendResponse({ success: true });
     }
     

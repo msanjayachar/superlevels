@@ -95,7 +95,9 @@
       margin-bottom: 16px;
     }
     .add-time-btn {
+      position: relative;
       flex: 1;
+      min-width: 60px;
       padding: 14px 8px;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       border: none;
@@ -105,9 +107,14 @@
       font-weight: 700;
       cursor: pointer;
       transition: all 0.15s;
+      overflow: hidden;
     }
-    .add-time-btn:hover {
+    .add-time-btn:hover:not(:disabled) {
       transform: scale(1.05);
+    }
+    .add-time-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
     }
     .add-time-btn .lbl {
       display: block;
@@ -115,6 +122,19 @@
       font-weight: 400;
       margin-top: 2px;
       opacity: 0.8;
+    }
+    .add-time-btn .countdown-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.5);
+      width: 0%;
+      transition: width linear;
+    }
+    .add-time-btn .btn-text {
+      position: relative;
+      z-index: 1;
     }
     .deactivate-btn {
       width: 100%;
@@ -167,6 +187,95 @@
       color: #666;
       font-size: 14px;
     }
+    
+    /* Confirmation Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 1px solid #333;
+      border-radius: 16px;
+      padding: 30px;
+      max-width: 360px;
+      width: 100%;
+    }
+    .modal h2 {
+      font-size: 20px;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+    .modal .usage-warning {
+      background: rgba(233, 69, 96, 0.15);
+      border: 1px solid rgba(233, 69, 96, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .modal .usage-warning .used-time {
+      font-size: 32px;
+      font-weight: 700;
+      color: #e94560;
+    }
+    .modal .usage-warning .used-label {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+    .modal .usage-warning .ask-time {
+      font-size: 14px;
+      color: #aaa;
+      margin-top: 12px;
+    }
+    .modal .usage-warning .ask-time strong {
+      color: #667eea;
+    }
+    .modal .modal-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    .modal .modal-btn {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .modal .modal-btn.cancel {
+      background: transparent;
+      border: 1px solid #444;
+      color: #888;
+    }
+    .modal .modal-btn.cancel:hover {
+      border-color: #666;
+      color: #aaa;
+    }
+    .modal .modal-btn.confirm {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+    .modal .modal-btn.confirm:hover {
+      transform: scale(1.02);
+    }
+    .modal .modal-btn.confirm:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
   </style>
 </head>
 <body>
@@ -189,11 +298,11 @@
         <div class="reason-stats">
           <div class="reason-stat">
             <div class="val" id="usedTime">0</div>
-            <div class="lbl">seconds used</div>
+            <div class="lbl">used</div>
           </div>
           <div class="reason-stat">
             <div class="val" id="limitTime">0</div>
-            <div class="lbl">seconds limit</div>
+            <div class="lbl">limit</div>
           </div>
         </div>
       </div>
@@ -201,11 +310,26 @@
       <p>Add more time to continue using this site</p>
       
       <div class="add-time-btns">
-        <button class="add-time-btn" data-secs="10">+10<div class="lbl">sec</div></button>
-        <button class="add-time-btn" data-secs="300">+5<div class="lbl">min</div></button>
-        <button class="add-time-btn" data-secs="600">+10<div class="lbl">min</div></button>
-        <button class="add-time-btn" data-secs="900">+15<div class="lbl">min</div></button>
-        <button class="add-time-btn" data-secs="1200">+20<div class="lbl">min</div></button>
+        <button class="add-time-btn" data-secs="10" data-cooldown="3">
+          <span class="btn-text">+10<div class="lbl">sec</div></span>
+          <div class="countdown-bar"></div>
+        </button>
+        <button class="add-time-btn" data-secs="300" data-cooldown="5">
+          <span class="btn-text">+5<div class="lbl">min</div></span>
+          <div class="countdown-bar"></div>
+        </button>
+        <button class="add-time-btn" data-secs="600" data-cooldown="10">
+          <span class="btn-text">+10<div class="lbl">min</div></span>
+          <div class="countdown-bar"></div>
+        </button>
+        <button class="add-time-btn" data-secs="900" data-cooldown="15">
+          <span class="btn-text">+15<div class="lbl">min</div></span>
+          <div class="countdown-bar"></div>
+        </button>
+        <button class="add-time-btn" data-secs="1200" data-cooldown="20">
+          <span class="btn-text">+20<div class="lbl">min</div></span>
+          <div class="countdown-bar"></div>
+        </button>
       </div>
       
       <button class="deactivate-btn" id="deactivateBtn">Deactivate for today</button>
@@ -221,6 +345,24 @@
       <div class="tip"><span class="emoji">🏃</span> Take a quick walk or stretch</div>
       <div class="tip"><span class="emoji">📝</span> Write down your thoughts</div>
       <div class="tip"><span class="emoji">💤</span> Take a deep breath and relax</div>
+    </div>
+  </div>
+  
+  <!-- Confirmation Modal -->
+  <div class="modal-overlay hidden" id="confirmModal">
+    <div class="modal">
+      <h2>Add More Time?</h2>
+      <div class="usage-warning">
+        <div class="used-time" id="modalUsedTime">0</div>
+        <div class="used-label">used today</div>
+        <div class="ask-time" id="modalAskTime">
+          Are you sure you want to use <strong>+10s</strong> more?
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" id="modalCancel">Cancel</button>
+        <button class="modal-btn confirm" id="modalConfirm">Yes, Add Time</button>
+      </div>
     </div>
   </div>
   

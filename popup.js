@@ -1407,6 +1407,16 @@ document.querySelectorAll(".regain-suggestion").forEach(el => {
   });
 });
 
+// Format time display
+function formatTime(secs) {
+  if (!secs || secs === 0) return '0s';
+  if (secs < 60) return secs + 's';
+  const mins = Math.floor(secs / 60);
+  const remainingSecs = secs % 60;
+  if (remainingSecs === 0) return mins + 'm';
+  return `${mins}m ${remainingSecs}s`;
+}
+
 function renderBlocklist() {
   if (!regainData.blocklist.length) {
     regainBlocklist.innerHTML = '<div class="regain-empty">No sites blocked. Add some above!</div>';
@@ -1417,6 +1427,7 @@ function renderBlocklist() {
   
   regainBlocklist.innerHTML = regainData.blocklist.map(site => {
     const currentLimit = regainData.dailyLimits[site] || 0;
+    const currentUsage = regainData.usageToday[site] || 0;
     const limitBtns = limitOptions.map(secs => {
       const label = secs < 60 ? `${secs}s` : `${secs / 60}m`;
       return `<button class="limit-btn ${currentLimit === secs ? 'active' : ''}" data-site="${escA(site)}" data-mins="${secs}">${label}</button>`;
@@ -1424,6 +1435,7 @@ function renderBlocklist() {
     return `
       <div class="item">
         <span class="site">${esc(site)}</span>
+        <span class="usage-badge"><span class="used">${formatTime(currentUsage)}</span></span>
         <div class="limit-btns">${limitBtns}</div>
         <button data-site="${escA(site)}">&times;</button>
       </div>
