@@ -1,12 +1,12 @@
 // blocked-modal.js - Content script to show blocked overlay directly in DOM
 // Runs on all pages, checks if current site is blocked and limit reached
 
-(function() {
+(function () {
   'use strict';
-  
+
   // Prevent multiple injections
   if (document.getElementById('regain-blocked-modal')) return;
-  
+
   // Get current site from hostname
   function getSiteFromUrl(url) {
     try {
@@ -16,26 +16,26 @@
       return null;
     }
   }
-  
+
   // Check if site is in blocklist
   function isBlockedSite(site, blocklist) {
     if (!site || !blocklist || !blocklist.length) return false;
     const normalizedSite = site.replace(/^www\./, '');
     return blocklist.some(blocked => {
       const normalizedBlocked = blocked.replace(/^www\./, '');
-      return normalizedSite === normalizedBlocked || 
-             normalizedSite.endsWith('.' + normalizedBlocked) ||
-             normalizedBlocked.endsWith('.' + normalizedSite);
+      return normalizedSite === normalizedBlocked ||
+        normalizedSite.endsWith('.' + normalizedBlocked) ||
+        normalizedBlocked.endsWith('.' + normalizedSite);
     });
   }
-  
+
   // Check if limit reached
   function checkLimitReached(site, dailyLimits, usageToday) {
     const limit = dailyLimits[site] || 0;
     const used = usageToday[site] || 0;
     return limit > 0 && used >= limit;
   }
-  
+
   // Format time
   function formatTime(secs) {
     if (secs < 60) return secs + 's';
@@ -44,61 +44,61 @@
     if (remainingSecs === 0) return mins + 'm';
     return mins + 'm ' + remainingSecs + 's';
   }
-  
+
   // Get site and check if should show modal
   const currentSite = getSiteFromUrl(window.location.href);
   if (!currentSite) return;
-  
+
   // Read from storage to get blocklist, limits, usage
   chrome.storage.local.get([
     'regain_blocklist',
-    'regain_dailyLimits', 
+    'regain_dailyLimits',
     'regain_usageToday',
     'regain_deactivatedToday'
-  ], function(data) {
+  ], function (data) {
     var blocklist = data.regain_blocklist || [];
     var dailyLimits = data.regain_dailyLimits || {};
     var usageToday = data.regain_usageToday || {};
     var deactivatedToday = data.regain_deactivatedToday || [];
-    
+
     console.log('[Regain] Checking site:', currentSite, { blocklist: blocklist, dailyLimits: dailyLimits, usageToday: usageToday });
-    
+
     // Check if site is blocked
     if (!isBlockedSite(currentSite, blocklist)) {
       console.log('[Regain] Site NOT in blocklist');
       return;
     }
-    
+
     // Check if site is deactivated for today
     if (deactivatedToday.indexOf(currentSite) !== -1) {
       console.log('[Regain] Site is deactivated for today');
       return;
     }
-    
+
     // Check if limit has been reached
     if (!checkLimitReached(currentSite, dailyLimits, usageToday)) {
       console.log('[Regain] Limit NOT reached');
       return;
     }
-    
+
     // Site is blocked and limit reached - show the modal!
     var limit = dailyLimits[currentSite] || 0;
     var used = usageToday[currentSite] || 0;
     console.log('[Regain] Showing modal! Site:', currentSite, 'Used:', used, 'Limit:', limit);
-    
+
     // Create the modal directly in DOM
     createModal(currentSite, used, limit);
   });
-  
+
   function createModal(site, used, limit) {
     // Create host element for Shadow DOM
     var host = document.createElement('div');
     host.id = 'regain-blocked-modal';
     host.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;';
-    
+
     // Create Shadow DOM
     var shadow = host.attachShadow({ mode: 'open' });
-    
+
     // CSS for the modal (inline to work in Shadow DOM)
     var css = `
       :host {
@@ -325,9 +325,9 @@
         margin-top: 0;
       }
     `;
-    
+
     // Create modal HTML
-    var modalHTML = 
+    var modalHTML =
       '<style>' + css + '</style>' +
       '<div class="overlay">' +
       '<div class="modal">' +
@@ -343,7 +343,7 @@
       '</div>' +
       '<div class="msg">Add more time to continue</div>' +
       '<div class="btns">' +
-      '<button class="btn btn-primary" data-secs="10" data-loader="2"><span>+10s</span><div class="countdown-bar"></div></button>' +
+      '<button class="btn btn-primary" data-secs="120" data-loader="2"><span>+2m</span><div class="countdown-bar"></div></button>' +
       '<button class="btn btn-primary" data-secs="300" data-loader="5"><span>+5m</span><div class="countdown-bar"></div></button>' +
       '<button class="btn btn-primary" data-secs="600" data-loader="10"><span>+10m</span><div class="countdown-bar"></div></button>' +
       '<button class="btn btn-primary" data-secs="900" data-loader="15"><span>+15m</span><div class="countdown-bar"></div></button>' +
@@ -356,13 +356,13 @@
       '</div>' +
       '</div>' +
       '</div>';
-    
+
     shadow.innerHTML = modalHTML;
     document.body.appendChild(host);
-    
+
     // Add button event listeners
     var buttons = shadow.querySelectorAll('button[data-secs]');
-    buttons.forEach(function(btn) {
+    buttons.forEach(function (btn) {
       var secs = parseInt(btn.getAttribute('data-secs'));
       var loaderSecs = parseInt(btn.getAttribute('data-loader'));
       var countdownBar = btn.querySelector('.countdown-bar');
@@ -394,7 +394,7 @@
         btn.classList.add('btn-ready');
       }
 
-      btn.addEventListener('click', function(e) {
+      btn.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
         var secs = parseInt(this.getAttribute('data-secs'));
@@ -406,9 +406,9 @@
             type: 'regainAddTime',
             site: site,
             secs: secs
-          }, function(response) {
+          }, function (response) {
             console.log('[Regain] Time added, checking if limit still reached');
-            chrome.storage.local.get(['regain_dailyLimits', 'regain_usageToday'], function(data) {
+            chrome.storage.local.get(['regain_dailyLimits', 'regain_usageToday'], function (data) {
               var limit = (data.regain_dailyLimits || {})[site] || 0;
               var used = (data.regain_usageToday || {})[site] || 0;
               if (limit > 0 && used >= limit) {
@@ -425,20 +425,20 @@
         }
       });
     });
-    
+
     // Deactivate button
     var deactivateBtn = shadow.getElementById('regain-deactivate');
     if (deactivateBtn) {
-      deactivateBtn.addEventListener('click', function(e) {
+      deactivateBtn.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
         console.log('[Regain] Deactivate clicked');
-        
+
         try {
           chrome.runtime.sendMessage({
             type: 'regainDeactivateSite',
             site: site
-          }, function() {
+          }, function () {
             console.log('[Regain] Site deactivated, removing modal');
             host.remove();
           });
@@ -448,7 +448,7 @@
         }
       });
     }
-    
+
     // Update reset time
     function updateResetTime() {
       var now = new Date();
@@ -464,10 +464,10 @@
         resetEl.textContent = hours.toString().padStart(2, '0') + ':' + mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
       }
     }
-    
+
     updateResetTime();
     setInterval(updateResetTime, 1000);
-    
+
     console.log('[Regain] Modal created successfully!');
   }
 })();
