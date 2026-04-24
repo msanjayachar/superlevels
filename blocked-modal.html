@@ -369,11 +369,13 @@
     document.querySelectorAll('.btn[data-secs]').forEach(btn => {
       btn.addEventListener('click', () => {
         const secs = parseInt(btn.dataset.secs);
+        console.log('[Regain Modal] Button clicked:', secs);
         showConfirm(secs);
       });
     });
     
     document.getElementById('deactivate').addEventListener('click', () => {
+      console.log('[Regain Modal] Deactivate button clicked');
       sendMessage('deactivate', { site: site });
     });
     
@@ -391,6 +393,7 @@
     });
     
     window.addEventListener('message', (event) => {
+      console.log('[Regain Modal] Received message:', event.data);
       if (event.data && event.data.type === 'init') {
         site = event.data.site || 'this site';
         used = event.data.used || 0;
@@ -404,6 +407,28 @@
         setInterval(updateResetTime, 1000);
       }
     });
+    
+    // Also try to read from window.__regainData directly (fallback)
+    try {
+      if (window.parent.__regainData) {
+        console.log('[Regain Modal] Reading from window.__regainData:', window.parent.__regainData);
+        const data = window.parent.__regainData;
+        site = data.site || site;
+        used = data.used || used;
+        limit = data.limit || limit;
+        
+        document.getElementById('site').textContent = site;
+        document.getElementById('used').textContent = formatTime(used);
+        document.getElementById('limit').textContent = formatTime(limit);
+        
+        updateResetTime();
+        setInterval(updateResetTime, 1000);
+      } else {
+        console.log('[Regain Modal] No window.__regainData found, waiting for postMessage...');
+      }
+    } catch (e) {
+      console.log('[Regain Modal] Error reading __regainData:', e);
+    }
   </script>
 </body>
 </html>
