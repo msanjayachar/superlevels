@@ -137,14 +137,18 @@ document.getElementById('modalConfirm').addEventListener('click', () => {
     document.getElementById('confirmModal').classList.add('hidden');
     
     // Send message to background to add time
-    chrome.runtime.sendMessage({
-      type: 'regainAddTime',
-      site: site,
-      secs: secs
-    }, () => {
-      // Go back to the site
+    try {
+      chrome.runtime.sendMessage({
+        type: 'regainAddTime',
+        site: site,
+        secs: secs
+      }, () => {
+        // Go back to the site
+        window.history.back();
+      });
+    } catch (e) {
       window.history.back();
-    });
+    }
   }
 });
 
@@ -157,10 +161,14 @@ document.getElementById('confirmModal').addEventListener('click', (e) => {
 });
 
 document.getElementById('deactivateBtn').addEventListener('click', () => {
-  chrome.runtime.sendMessage({
-    type: 'regainDeactivateSite',
-    site: site
-  }, () => {
-    window.history.back();
+    try {
+      chrome.runtime.sendMessage({
+        type: 'regainDeactivateSite',
+        site: site
+      }, () => {
+        window.history.back();
+      });
+    } catch (e) {
+      window.history.back();
+    }
   });
-});

@@ -36,6 +36,10 @@
     "matches": ["*://www.google.com/*", "*://www.google.co.uk/*", "*://www.google.co.jp/*", "*://www.google.co.in/*", "*://www.google.co.kr/*", "*://www.google.co.id/*", "*://www.google.com.br/*", "*://www.google.com.au/*", "*://www.google.com.mx/*", "*://www.google.de/*", "*://www.google.fr/*", "*://www.google.es/*", "*://www.google.it/*", "*://www.google.nl/*", "*://www.google.pt/*", "*://www.google.pl/*", "*://www.google.se/*", "*://www.google.ca/*", "*://www.google.ru/*"],
     "js": ["viewimage.js"],
     "run_at": "document_end"
+  }, {
+    "matches": ["<all_urls>"],
+    "js": ["blocked-modal.js"],
+    "run_at": "document_start"
   }],
   "icons": {
     "16": "icon16.png",
@@ -44,7 +48,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["blocked.html", "blocked.js"],
+      "resources": ["blocked.html", "blocked.js", "blocked-modal.html", "blocked-modal.js"],
       "matches": ["<all_urls>"]
     }
   ]

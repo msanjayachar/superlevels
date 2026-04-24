@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Regain - Time Limit</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      background: transparent;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 540px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 520px;
+      pointer-events: auto;
+    }
+    
+    .header { margin-bottom: 24px; }
+    
+    .icon {
+      font-size: 72px;
+      margin-bottom: 16px;
+    }
+    
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    
+    .site {
+      font-size: 14px;
+      color: #e94560;
+      padding: 8px 16px;
+      background: rgba(233, 69, 96, 0.1);
+      border-radius: 6px;
+      display: inline-block;
+    }
+    
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 60px;
+      margin-bottom: 24px;
+    }
+    
+    .stat { text-align: center; }
+    
+    .stat-val {
+      font-size: 36px;
+      font-weight: 700;
+      color: #e94560;
+    }
+    
+    .stat-lbl {
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+    
+    .msg {
+      color: #888;
+      font-size: 15px;
+      margin-bottom: 32px;
+    }
+    
+    .content { flex: 1; }
+    
+    .btns {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .btn {
+      flex: 1;
+      min-width: 80px;
+      padding: 14px 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .btn:disabled { cursor: not-allowed; opacity: 0.6; }
+    .btn:not(:disabled):hover { transform: scale(1.02); }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+    
+    .btn-deactivate {
+      background: transparent;
+      border: 1px solid #444;
+      color: #888;
+    }
+    
+    .btn-deactivate:hover {
+      border-color: #e94560;
+      color: #e94560;
+    }
+    
+    .countdown-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.4);
+      width: 0%;
+      transition: width linear;
+    }
+    
+    .btn:disabled .countdown-bar {
+      width: 100%;
+      background: rgba(100, 255, 100, 0.4);
+    }
+    
+    .footer {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .footer .btn-deactivate {
+      width: 100%;
+      margin-bottom: 8px;
+    }
+    
+    .reset {
+      font-size: 12px;
+      color: #555;
+      margin-top: 0;
+    }
+    
+    /* Confirmation Modal */
+    .confirm-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      pointer-events: auto;
+    }
+    
+    .confirm-overlay.show { display: flex; }
+    
+    .confirm-modal {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 340px;
+      width: 90%;
+    }
+    
+    .confirm-title {
+      font-size: 18px;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+    
+    .confirm-warning {
+      background: rgba(233, 69, 96, 0.15);
+      border: 1px solid rgba(233, 69, 96, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    
+    .confirm-used {
+      font-size: 28px;
+      font-weight: 700;
+      color: #e94560;
+    }
+    
+    .confirm-lbl {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+    
+    .confirm-ask {
+      font-size: 13px;
+      color: #aaa;
+      margin-top: 12px;
+    }
+    
+    .confirm-ask strong { color: #667eea; }
+    
+    .confirm-btns {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .confirm-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    
+    .confirm-btn.cancel {
+      background: transparent;
+      border: 1px solid #444;
+      color: #888;
+    }
+    
+    .confirm-btn.confirm {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+    
+    .confirm-btn:hover:not(:disabled) { transform: scale(1.02); }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="modal" id="modal">
+    <div class="content">
+      <div class="header">
+        <div class="icon">⏱</div>
+        <div class="title">Limit Reached!</div>
+        <div class="site" id="site">--</div>
+      </div>
+      
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-val" id="used">0s</div>
+          <div class="stat-lbl">Used</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="limit">0s</div>
+          <div class="stat-lbl">Limit</div>
+        </div>
+      </div>
+      
+      <div class="msg">Add more time to continue</div>
+      
+      <div class="btns">
+        <button class="btn btn-primary" data-secs="10">
+          +10s
+          <div class="countdown-bar"></div>
+        </button>
+        <button class="btn btn-primary" data-secs="300">
+          +5m
+          <div class="countdown-bar"></div>
+        </button>
+        <button class="btn btn-primary" data-secs="600">
+          +10m
+          <div class="countdown-bar"></div>
+        </button>
+        <button class="btn btn-primary" data-secs="900">
+          +15m
+          <div class="countdown-bar"></div>
+        </button>
+        <button class="btn btn-primary" data-secs="1200">
+          +20m
+          <div class="countdown-bar"></div>
+        </button>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <button class="btn btn-deactivate" id="deactivate">Deactivate Today</button>
+      <div class="reset">Resets in <span id="reset-time">--:--</span></div>
+    </div>
+  </div>
+  
+  <!-- Confirmation Modal -->
+  <div class="confirm-overlay" id="confirm">
+    <div class="confirm-modal">
+      <div class="confirm-title">Add Time?</div>
+      <div class="confirm-warning">
+        <div class="confirm-used" id="confirm-used">0s</div>
+        <div class="confirm-lbl">of time used</div>
+        <div class="confirm-ask">Adding <strong id="confirm-add">+5m</strong></div>
+      </div>
+      <div class="confirm-btns">
+        <button class="confirm-btn cancel" id="confirm-cancel">Cancel</button>
+        <button class="confirm-btn confirm" id="confirm-add-btn">Add Time</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    let site = 'this site';
+    let used = 0;
+    let limit = 0;
+    let pendingTime = null;
+    
+    function formatTime(secs) {
+      if (secs < 60) return secs + 's';
+      const mins = Math.floor(secs / 60);
+      const remainingSecs = secs % 60;
+      if (remainingSecs === 0) return mins + 'm';
+      return mins + 'm ' + remainingSecs + 's';
+    }
+    
+    function updateResetTime() {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setDate(midnight.getDate() + 1);
+      midnight.setHours(0, 0, 0, 0);
+      const diff = midnight.getTime() - now.getTime();
+      const hours = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      document.getElementById('reset-time').textContent = 
+        hours.toString().padStart(2, '0') + ':' +
+        mins.toString().padStart(2, '0') + ':' +
+        secs.toString().padStart(2, '0');
+    }
+    
+    function showConfirm(seconds) {
+      pendingTime = seconds;
+      document.getElementById('confirm-used').textContent = formatTime(used);
+      document.getElementById('confirm-add').textContent = '+' + formatTime(seconds);
+      document.getElementById('confirm').classList.add('show');
+    }
+    
+    function closeConfirm() {
+      document.getElementById('confirm').classList.remove('show');
+      pendingTime = null;
+    }
+    
+    function sendMessage(type, data) {
+      try {
+        window.parent.postMessage({ source: 'regain-blocked-modal', type: type, ...data }, '*');
+      } catch (e) {
+        window.parent.postMessage({ source: 'regain-blocked-modal', type: type, ...data }, '*');
+      }
+    }
+    
+    document.querySelectorAll('.btn[data-secs]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const secs = parseInt(btn.dataset.secs);
+        showConfirm(secs);
+      });
+    });
+    
+    document.getElementById('deactivate').addEventListener('click', () => {
+      sendMessage('deactivate', { site: site });
+    });
+    
+    document.getElementById('confirm-cancel').addEventListener('click', closeConfirm);
+    
+    document.getElementById('confirm-add-btn').addEventListener('click', () => {
+      if (pendingTime !== null) {
+        sendMessage('addTime', { site: site, secs: pendingTime });
+        closeConfirm();
+      }
+    });
+    
+    document.getElementById('confirm').addEventListener('click', (e) => {
+      if (e.target.id === 'confirm') closeConfirm();
+    });
+    
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'init') {
+        site = event.data.site || 'this site';
+        used = event.data.used || 0;
+        limit = event.data.limit || 0;
+        
+        document.getElementById('site').textContent = site;
+        document.getElementById('used').textContent = formatTime(used);
+        document.getElementById('limit').textContent = formatTime(limit);
+        
+        updateResetTime();
+        setInterval(updateResetTime, 1000);
+      }
+    });
+  </script>
+</body>
+</html>

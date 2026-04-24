@@ -305,8 +305,25 @@ function startTrackingTab(tabId, site) {
   
   // Check if limit already reached (persistence check)
   if (checkDailyLimitReached(site)) {
-    chrome.tabs.update(tabId, {
-      url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site]}&used=${regainUsageToday[site] || 0}&reason=limit`
+    // Inject modal overlay with data
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: (s, l, u) => {
+        window.__regainSite = s;
+        window.__regainLimit = l;
+        window.__regainUsed = u;
+      },
+      args: [site, regainDailyLimits[site] || 0, regainUsageToday[site] || 0]
+    }).then(() => {
+      return chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: ['blocked-modal.js']
+      });
+    }).catch(() => {
+      // Fallback to redirect
+      chrome.tabs.update(tabId, {
+        url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site]}&used=${regainUsageToday[site] || 0}&reason=limit`
+      });
     });
     return;
   }
@@ -335,13 +352,39 @@ function startTrackingTab(tabId, site) {
     
     chrome.storage.local.set({ regain_usageToday: regainUsageToday });
     
+    // Send update to popup if open
+    try {
+      chrome.runtime.sendMessage({
+        type: "regainUsageUpdate",
+        usage: regainUsageToday,
+        limits: regainDailyLimits
+      });
+    } catch (e) {}
+    
     // Check if limit reached
     if (checkDailyLimitReached(site)) {
-      console.log('[DEBUG] LIMIT REACHED - Redirecting to blocked page');
+      console.log('[DEBUG] LIMIT REACHED - Showing modal overlay');
       stopTrackingTab();
-      // Redirect to blocked page
-      chrome.tabs.update(tabId, {
-        url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site]}&used=${regainUsageToday[site]}&reason=limit`
+      // Inject modal overlay with data
+      chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        func: (s, l, u) => {
+          window.__regainSite = s;
+          window.__regainLimit = l;
+          window.__regainUsed = u;
+        },
+        args: [site, regainDailyLimits[site] || 0, regainUsageToday[site] || 0]
+      }).then(() => {
+        return chrome.scripting.executeScript({
+          target: { tabId: tabId },
+          files: ['blocked-modal.js']
+        });
+      }).catch(err => {
+        console.error('[Regain] Failed to inject modal:', err);
+        // Fallback to redirect if injection fails
+        chrome.tabs.update(tabId, {
+          url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site]}&used=${regainUsageToday[site]}&reason=limit`
+        });
       });
     }
   }, 1000); // Track every second
@@ -377,10 +420,27 @@ async function checkExistingTabsOnStartup() {
       if (tab.url && tab.url.startsWith('http') && tab.active) {
         const site = getSiteFromUrl(tab.url);
         if (site && isBlockedSite(site) && checkDailyLimitReached(site)) {
-          chrome.tabs.update(tab.id, {
-            url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site] || 0}&used=${regainUsageToday[site] || 0}&reason=limit`
+          // Inject modal overlay with data
+          chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: (s, l, u) => {
+              window.__regainSite = s;
+              window.__regainLimit = l;
+              window.__regainUsed = u;
+            },
+            args: [site, regainDailyLimits[site] || 0, regainUsageToday[site] || 0]
+          }).then(() => {
+            return chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ['blocked-modal.js']
+            });
+          }).catch(() => {
+            // Fallback to redirect
+            chrome.tabs.update(tab.id, {
+              url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site] || 0}&used=${regainUsageToday[site] || 0}&reason=limit`
+            });
           });
-          break; // Only redirect one tab
+          break; // Only block one tab
         }
       }
     }
@@ -432,7 +492,7 @@ async function initDailyTracking() {
 // Also track when tab URL changes or page loads
   chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     const url = changeInfo.url || (tab.url && tab.url.startsWith('http') ? tab.url : null);
-    if (url) {
+    if (url && url.startsWith('http')) {
       const site = getSiteFromUrl(url);
       if (site) {
         startTrackingTab(tabId, site);
@@ -440,10 +500,7 @@ async function initDailyTracking() {
     }
   });
    
-   // Check existing tabs on startup for any blocked sites that need redirect
-   checkExistingTabsOnStartup();
-   
-   // Create midnight reset alarm
+ // Create midnight reset alarm
    const now = new Date();
    const midnight = new Date(now);
    midnight.setDate(midnight.getDate() + 1);
@@ -471,6 +528,10 @@ async function initDailyTracking() {
       regainDailyLimits[site] = (regainDailyLimits[site] || 0) + secs;
       chrome.storage.local.set({ regain_dailyLimits: regainDailyLimits });
       sendResponse({ success: true });
+      // Resume tracking if this was the active tab
+      if (sender.tab && sender.tab.id === regainActiveTabId) {
+        setTimeout(() => startTrackingTab(sender.tab.id, site), 500);
+      }
     }
     
     if (msg.type === "regainDeactivateSite") {
@@ -480,6 +541,10 @@ async function initDailyTracking() {
         chrome.storage.local.set({ regain_deactivatedToday: regainDeactivatedToday });
       }
       sendResponse({ success: true });
+      // Clear tracking for this site (it's deactivated for today)
+      if (regainActiveTabSite === site) {
+        stopTrackingTab();
+      }
     }
     
     if (msg.type === "regainGetUsage") {
@@ -638,6 +703,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       regain_blocklist: regainBlocklist
     });
     sendResponse({ success: true });
+    
+    // Auto-start tracking if this site is currently active
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0] && tabs[0].url) {
+        const activeSite = getSiteFromUrl(tabs[0].url);
+        if (activeSite === site && isBlockedSite(site)) {
+          startTrackingTab(tabs[0].id, site);
+        }
+      }
+    });
   }
   
   return true;

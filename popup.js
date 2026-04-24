@@ -1184,6 +1184,17 @@ async function loadRegain() {
   }
 
   checkStreak();
+  
+  // Restore the correct mode UI
+  if (regainData.currentMode === "daily") {
+    regainModeBtns.forEach(b => b.classList.toggle("active", b.dataset.mode === "daily"));
+    regainFocusContent.classList.remove("show");
+    regainDailyContent.classList.add("show");
+  } else {
+    regainModeBtns.forEach(b => b.classList.toggle("active", b.dataset.mode === "focus"));
+    regainFocusContent.classList.add("show");
+    regainDailyContent.classList.remove("show");
+  }
 }
 
 function checkStreak() {
@@ -1380,7 +1391,7 @@ function completeFocusSession() {
 regainBlockAdd.addEventListener("click", addToBlocklist);
 regainBlockInput.addEventListener("keydown", (e) => { if (e.key === "Enter") addToBlocklist(); });
 
-function addToBlocklist() {
+function doAddToBlocklist() {
   let site = regainBlockInput.value.trim().toLowerCase();
   if (!site) return;
   site = site.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
@@ -1397,6 +1408,15 @@ function addToBlocklist() {
   
   if (regainData.enabled && !regainData.focusActive) {
     activateBlocking();
+  }
+}
+
+function addToBlocklist() {
+  if (regainData.passcode) {
+    pendingAction = doAddToBlocklist;
+    showVerifyModal(() => { pendingAction(); pendingAction = null; });
+  } else {
+    doAddToBlocklist();
   }
 }
 
@@ -1554,3 +1574,12 @@ function activateBlocking() {
 function deactivateBlocking() {
   chrome.runtime.sendMessage({ type: "regainDeactivateBlocking" }).catch(() => {});
 }
+
+// Real-time sync: receive usage updates from background
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === "regainUsageUpdate" && regainData) {
+    regainData.usageToday = msg.usage || {};
+    regainData.dailyLimits = msg.limits || {};
+    renderBlocklist();
+  }
+});
