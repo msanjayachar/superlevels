@@ -237,7 +237,9 @@ let regainUsageToday = {};
 let regainLastResetDate = "";
 let regainDeactivatedToday = [];
 let regainActiveTabSite = null;
+let regainActiveTabId = null;
 let regainTrackingInterval = null;
+let isTrackingInitialized = false;
 
 const BLOCKED_RESPONSE = `
 <!DOCTYPE html>
@@ -294,9 +296,20 @@ function isBlockedSite(site) {
 function startTrackingTab(tabId, site) {
   stopTrackingTab();
   
+  console.log('[DEBUG] startTrackingTab:', { tabId, site, isBlocked: isBlockedSite(site), limit: regainDailyLimits[site], used: regainUsageToday[site] });
+  
   if (!isBlockedSite(site)) return;
   
   regainActiveTabSite = site;
+  regainActiveTabId = tabId;
+  
+  // Check if limit already reached (persistence check)
+  if (checkDailyLimitReached(site)) {
+    chrome.tabs.update(tabId, {
+      url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site]}&used=${regainUsageToday[site] || 0}&reason=limit`
+    });
+    return;
+  }
   
   regainTrackingInterval = setInterval(() => {
     const now = new Date();
@@ -308,23 +321,30 @@ function startTrackingTab(tabId, site) {
       return;
     }
     
-    // Increment usage
+    // Increment usage by 1 second
     if (!regainUsageToday[site]) regainUsageToday[site] = 0;
-    // For limits < 5 min, use smaller increment (1/6 per 10s = 1 per minute)
-    const limit = regainDailyLimits[site] || 0;
-    regainUsageToday[site] += (limit > 0 && limit < 5) ? (1/6) : 1;
+    regainUsageToday[site]++;
+    
+    console.log('[DEBUG] Tick:', { 
+      trackingSite: site, 
+      regainActiveTabSite, 
+      used: regainUsageToday[site], 
+      limit: regainDailyLimits[site],
+      reached: checkDailyLimitReached(site) 
+    });
     
     chrome.storage.local.set({ regain_usageToday: regainUsageToday });
     
     // Check if limit reached
     if (checkDailyLimitReached(site)) {
+      console.log('[DEBUG] LIMIT REACHED - Redirecting to blocked page');
       stopTrackingTab();
       // Redirect to blocked page
       chrome.tabs.update(tabId, {
         url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site]}&used=${regainUsageToday[site]}&reason=limit`
       });
     }
-  }, 10000); // Track every 10 seconds
+  }, 1000); // Track every second
 }
 
 function stopTrackingTab() {
@@ -333,6 +353,7 @@ function stopTrackingTab() {
     regainTrackingInterval = null;
   }
   regainActiveTabSite = null;
+  regainActiveTabId = null;
 }
 
 function resetDailyUsage() {
@@ -346,6 +367,26 @@ function resetDailyUsage() {
     regain_lastResetDate: regainLastResetDate,
     regain_deactivatedToday: []
   });
+}
+
+// Check all existing tabs on extension startup for blocked sites
+async function checkExistingTabsOnStartup() {
+  try {
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      if (tab.url && tab.url.startsWith('http') && tab.active) {
+        const site = getSiteFromUrl(tab.url);
+        if (site && isBlockedSite(site) && checkDailyLimitReached(site)) {
+          chrome.tabs.update(tab.id, {
+            url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site] || 0}&used=${regainUsageToday[site] || 0}&reason=limit`
+          });
+          break; // Only redirect one tab
+        }
+      }
+    }
+  } catch (e) {
+    console.error('checkExistingTabsOnStartup error:', e);
+  }
 }
 
 // Initialize daily tracking
@@ -369,6 +410,12 @@ async function initDailyTracking() {
     resetDailyUsage();
   }
   
+  // Mark as initialized BEFORE setting up listeners
+  isTrackingInitialized = true;
+  
+  // Check if any open tabs are blocked sites and need immediate redirect
+  checkExistingTabsOnStartup();
+  
   // Listen for tab activation to track time
   chrome.tabs.onActivated.addListener(async ({ tabId }) => {
     try {
@@ -382,22 +429,26 @@ async function initDailyTracking() {
     } catch (e) {}
   });
   
-  // Also track when tab URL changes
+// Also track when tab URL changes or page loads
   chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.url && tab.active) {
-      const site = getSiteFromUrl(changeInfo.url);
+    const url = changeInfo.url || (tab.url && tab.url.startsWith('http') ? tab.url : null);
+    if (url) {
+      const site = getSiteFromUrl(url);
       if (site) {
         startTrackingTab(tabId, site);
       }
     }
   });
-  
-  // Create midnight reset alarm
-  const now = new Date();
-  const midnight = new Date(now);
-  midnight.setDate(midnight.getDate() + 1);
-  midnight.setHours(0, 0, 0, 0);
-  const msUntilMidnight = midnight.getTime() - now.getTime();
+   
+   // Check existing tabs on startup for any blocked sites that need redirect
+   checkExistingTabsOnStartup();
+   
+   // Create midnight reset alarm
+   const now = new Date();
+   const midnight = new Date(now);
+   midnight.setDate(midnight.getDate() + 1);
+   midnight.setHours(0, 0, 0, 0);
+   const msUntilMidnight = midnight.getTime() - now.getTime();
   
   chrome.alarms.create("regainMidnightReset", { delayInMinutes: msUntilMidnight / 60000 });
   
@@ -415,8 +466,8 @@ async function initDailyTracking() {
   // Listen for messages to add time or deactivate
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "regainAddTime") {
-      const { site, mins } = msg;
-      regainUsageToday[site] = Math.max(0, (regainUsageToday[site] || 0) - mins);
+      const { site, secs } = msg;
+      regainUsageToday[site] = Math.max(0, (regainUsageToday[site] || 0) - secs);
       chrome.storage.local.set({ regain_usageToday: regainUsageToday });
       sendResponse({ success: true });
     }
@@ -576,6 +627,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   
   if (msg.type === "regainUpdateDailyLimit") {
     const { site, limit } = msg;
+    console.log('[DEBUG] regainUpdateDailyLimit:', { site, limit, regainBlocklist, regainDailyLimits });
     regainDailyLimits[site] = limit;
     if (!regainBlocklist.includes(site)) {
       regainBlocklist.push(site);

@@ -1413,13 +1413,14 @@ function renderBlocklist() {
     return;
   }
   
-  const limitOptions = [0.167, 5, 10, 15, 20];
+  const limitOptions = [10, 300, 600, 900, 1200];
   
   regainBlocklist.innerHTML = regainData.blocklist.map(site => {
     const currentLimit = regainData.dailyLimits[site] || 0;
-    const limitBtns = limitOptions.map(mins => 
-      `<button class="limit-btn ${currentLimit === mins ? 'active' : ''}" data-site="${escA(site)}" data-mins="${mins}">${mins === 0.167 ? '10s' : mins}</button>`
-    ).join('');
+    const limitBtns = limitOptions.map(secs => {
+      const label = secs < 60 ? `${secs}s` : `${secs / 60}m`;
+      return `<button class="limit-btn ${currentLimit === secs ? 'active' : ''}" data-site="${escA(site)}" data-mins="${secs}">${label}</button>`;
+    }).join('');
     return `
       <div class="item">
         <span class="site">${esc(site)}</span>
@@ -1445,8 +1446,8 @@ function renderBlocklist() {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const site = btn.dataset.site;
-      const mins = parseFloat(btn.dataset.mins);
-      regainData.dailyLimits[site] = mins;
+      const secs = parseInt(btn.dataset.mins);
+      regainData.dailyLimits[site] = secs;
       chrome.storage.local.set({ regain_dailyLimits: regainData.dailyLimits });
       renderBlocklist();
       
@@ -1454,7 +1455,7 @@ function renderBlocklist() {
       chrome.runtime.sendMessage({
         type: "regainUpdateDailyLimit",
         site: site,
-        limit: mins
+        limit: secs
       }).catch(() => {});
     });
   });

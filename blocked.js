@@ -11,8 +11,17 @@ document.getElementById('blockedSite').textContent = site;
 if (reason === 'limit') {
   document.getElementById('title').textContent = 'Limit Reached!';
   document.getElementById('limitBlock').classList.remove('hidden');
-  document.getElementById('usedTime').textContent = used;
-  document.getElementById('limitTime').textContent = limit;
+  
+  // Format time display
+  function formatTime(secs) {
+    if (secs < 60) return secs + 's';
+    const mins = Math.floor(secs / 60);
+    const remainingSecs = secs % 60;
+    return remainingSecs > 0 ? `${mins}m ${remainingSecs}s` : `${mins}m`;
+  }
+  
+  document.getElementById('usedTime').textContent = formatTime(used);
+  document.getElementById('limitTime').textContent = formatTime(limit);
   
   function updateResetCountdown() {
     const now = new Date();
@@ -50,11 +59,11 @@ if (reason === 'limit') {
 
 document.querySelectorAll('.add-time-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    const mins = parseInt(btn.dataset.mins);
+    const secs = parseInt(btn.dataset.secs);
     chrome.runtime.sendMessage({
       type: 'regainAddTime',
       site: site,
-      mins: mins
+      secs: secs
     }, () => {
       window.history.back();
     });
