@@ -491,7 +491,7 @@ async function applyDark() {
       type: "darkmode_toggle",
       enabled,
       brightness,
-    }).catch(() => {});
+    }).catch(() => { });
   }
 }
 
@@ -525,12 +525,12 @@ const xdimCustomHueSection = document.getElementById("xdimCustomHueSection");
 const xdimDots = document.querySelectorAll(".xdim-dot");
 
 const XDIM_THEMES = {
-  dim:   { hue: 210, sat: 34 },
-  slate: { hue: 210, sat: 8  },
-  jade:  { hue: 150, sat: 34 },
-  plum:  { hue: 270, sat: 34 },
-  dusk:  { hue: 330, sat: 34 },
-  ember: { hue: 25,  sat: 34 },
+  dim: { hue: 210, sat: 34 },
+  slate: { hue: 210, sat: 8 },
+  jade: { hue: 150, sat: 34 },
+  plum: { hue: 270, sat: 34 },
+  dusk: { hue: 330, sat: 34 },
+  ember: { hue: 25, sat: 34 },
 };
 
 let xdimTheme = "dim";
@@ -587,7 +587,7 @@ xdimToggle.addEventListener("change", async () => {
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
-    chrome.tabs.sendMessage(tab.id, { type: "xdim_toggle", enabled }).catch(() => {});
+    chrome.tabs.sendMessage(tab.id, { type: "xdim_toggle", enabled }).catch(() => { });
   }
 });
 
@@ -635,7 +635,7 @@ nocookieToggle.addEventListener("change", async () => {
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
-    chrome.tabs.sendMessage(tab.id, { type: "nocookie_toggle", enabled }).catch(() => {});
+    chrome.tabs.sendMessage(tab.id, { type: "nocookie_toggle", enabled }).catch(() => { });
   }
 });
 
@@ -665,7 +665,7 @@ async function loadLiveCSS() {
 livecssEditor.addEventListener("input", async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
-    chrome.tabs.sendMessage(tab.id, { type: "livecss_update", css: livecssEditor.value }).catch(() => {});
+    chrome.tabs.sendMessage(tab.id, { type: "livecss_update", css: livecssEditor.value }).catch(() => { });
   }
 });
 
@@ -694,7 +694,7 @@ livecssClear.addEventListener("click", async () => {
   await chrome.storage.local.remove(key);
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
-    chrome.tabs.sendMessage(tab.id, { type: "livecss_update", css: "" }).catch(() => {});
+    chrome.tabs.sendMessage(tab.id, { type: "livecss_update", css: "" }).catch(() => { });
   }
 });
 
@@ -723,7 +723,7 @@ unhookToggle.addEventListener("change", async () => {
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
-    chrome.tabs.sendMessage(tab.id, { type: "unhook_toggle", enabled }).catch(() => {});
+    chrome.tabs.sendMessage(tab.id, { type: "unhook_toggle", enabled }).catch(() => { });
   }
 });
 
@@ -1083,7 +1083,7 @@ jsonformatToggle.addEventListener("change", async () => {
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
-    chrome.tabs.sendMessage(tab.id, { type: "jsonformat_toggle", enabled }).catch(() => {});
+    chrome.tabs.sendMessage(tab.id, { type: "jsonformat_toggle", enabled }).catch(() => { });
   }
 });
 
@@ -1180,13 +1180,13 @@ async function loadRegain() {
 
   renderBlocklist();
   updateTimerDisplay();
-  
+
   if (regainData.focusActive) {
     resumeFocusTimer();
   }
 
   checkStreak();
-  
+
   // Restore the correct mode UI
   if (regainData.currentMode === "daily") {
     regainModeBtns.forEach(b => b.classList.toggle("active", b.dataset.mode === "daily"));
@@ -1230,7 +1230,7 @@ regainModeBtns.forEach(btn => {
     regainModeBtns.forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     regainData.currentMode = btn.dataset.mode;
-    
+
     if (btn.dataset.mode === "focus") {
       regainFocusContent.classList.add("show");
       regainDailyContent.classList.remove("show");
@@ -1293,18 +1293,18 @@ function startFocusSession() {
     regain_focusActive: true,
     regain_focusStartTime: regainData.focusStartTime
   });
-  
+
   activateBlocking();
   updateTimerDisplay();
-  
+
   // Send message to background to track focus
   chrome.runtime.sendMessage({
     type: "regainStartFocus",
     duration: regainData.focusDuration,
     startTime: regainData.focusStartTime,
     blocklist: regainData.blocklist
-  }).catch(() => {});
-  
+  }).catch(() => { });
+
   // Start local timer
   regainData.focusTimerInterval = setInterval(() => {
     updateTimerDisplay();
@@ -1331,18 +1331,18 @@ function stopFocusSession() {
   regainData.focusActive = false;
   chrome.storage.local.set({ regain_focusActive: false });
   updateTimerDisplay();
-  
-  chrome.runtime.sendMessage({ type: "regainStopFocus" }).catch(() => {});
+
+  chrome.runtime.sendMessage({ type: "regainStopFocus" }).catch(() => { });
 }
 
 function completeFocusSession() {
   clearInterval(regainData.focusTimerInterval);
   regainData.focusActive = false;
-  
+
   // Update stats
   const today = new Date().toDateString();
   const wasYesterday = regainData.lastFocusDate !== today;
-  
+
   if (regainData.lastFocusDate !== today) {
     if (regainData.lastFocusDate) {
       const yesterday = new Date();
@@ -1356,11 +1356,11 @@ function completeFocusSession() {
       regainData.streak = 1;
     }
   }
-  
+
   regainData.focusMinutes += regainData.focusDuration;
   regainData.coins += regainData.focusDuration * 2;
   regainData.lastFocusDate = today;
-  
+
   chrome.storage.local.set({
     regain_focusActive: false,
     regain_streak: regainData.streak,
@@ -1368,13 +1368,13 @@ function completeFocusSession() {
     regain_coins: regainData.coins,
     regain_lastFocusDate: today
   });
-  
+
   regainStreak.textContent = regainData.streak;
   regainCoins.textContent = regainData.coins;
   regainFocusTime.textContent = regainData.focusMinutes;
-  
+
   updateTimerDisplay();
-  
+
   // Show notification
   if (chrome.notifications) {
     chrome.notifications.create({
@@ -1384,10 +1384,10 @@ function completeFocusSession() {
       message: `Great job! You focused for ${regainData.focusDuration} minutes. +${regainData.focusDuration * 2} coins!`
     });
   }
-  
+
   deactivateBlocking();
-  
-  chrome.runtime.sendMessage({ type: "regainFocusComplete" }).catch(() => {});
+
+  chrome.runtime.sendMessage({ type: "regainFocusComplete" }).catch(() => { });
 }
 
 regainBlockAdd.addEventListener("click", addToBlocklist);
@@ -1397,22 +1397,22 @@ function doAddToBlocklist() {
   let site = regainBlockInput.value.trim().toLowerCase();
   if (!site) return;
   site = site.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
-  
+
   const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/;
   if (!domainRegex.test(site)) {
     return;
   }
-  
+
   if (regainData.blocklist.includes(site)) {
     regainBlockInput.value = "";
     return;
   }
-  
+
   regainData.blocklist.push(site);
   chrome.storage.local.set({ regain_blocklist: regainData.blocklist });
   regainBlockInput.value = "";
   renderBlocklist();
-  
+
   if (regainData.enabled && !regainData.focusActive) {
     activateBlocking();
   }
@@ -1449,9 +1449,9 @@ function renderBlocklist() {
     regainBlocklist.innerHTML = '<div class="regain-empty">No sites blocked. Add some above!</div>';
     return;
   }
-  
-  const limitOptions = [10, 300, 600, 900, 1200];
-  
+
+  const limitOptions = [120, 300, 600, 900, 1200];
+
   regainBlocklist.innerHTML = regainData.blocklist.map(site => {
     const currentLimit = regainData.dailyLimits[site] || 0;
     const currentUsage = regainData.usageToday[site] || 0;
@@ -1489,12 +1489,12 @@ function renderBlocklist() {
       if (isDeactivated) {
         regainData.deactivatedToday = regainData.deactivatedToday.filter(s => s !== site);
         chrome.storage.local.set({ regain_deactivatedToday: regainData.deactivatedToday });
-        chrome.runtime.sendMessage({ type: "regainActivateSite", site: site }).catch(() => {});
+        chrome.runtime.sendMessage({ type: "regainActivateSite", site: site }).catch(() => { });
       } else {
         if (!regainData.deactivatedToday.includes(site)) {
           regainData.deactivatedToday.push(site);
           chrome.storage.local.set({ regain_deactivatedToday: regainData.deactivatedToday });
-          chrome.runtime.sendMessage({ type: "regainDeactivateSite", site: site }).catch(() => {});
+          chrome.runtime.sendMessage({ type: "regainDeactivateSite", site: site }).catch(() => { });
         }
       }
       renderBlocklist();
@@ -1512,7 +1512,7 @@ function renderBlocklist() {
       }
     });
   });
-  
+
   regainBlocklist.querySelectorAll(".limit-btn").forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1521,13 +1521,13 @@ function renderBlocklist() {
       regainData.dailyLimits[site] = secs;
       chrome.storage.local.set({ regain_dailyLimits: regainData.dailyLimits });
       renderBlocklist();
-      
+
       // Notify background to start tracking this site
       chrome.runtime.sendMessage({
         type: "regainUpdateDailyLimit",
         site: site,
         limit: secs
-      }).catch(() => {});
+      }).catch(() => { });
     });
   });
 
@@ -1630,11 +1630,11 @@ function activateBlocking() {
     isFocusSession: regainData.focusActive,
     focusDuration: regainData.focusActive ? regainData.focusDuration : 0,
     focusStartTime: regainData.focusActive ? regainData.focusStartTime : 0
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 function deactivateBlocking() {
-  chrome.runtime.sendMessage({ type: "regainDeactivateBlocking" }).catch(() => {});
+  chrome.runtime.sendMessage({ type: "regainDeactivateBlocking" }).catch(() => { });
 }
 
 // Real-time sync: receive usage updates from background
