@@ -338,55 +338,66 @@ function startTrackingTab(tabId, site) {
       return;
     }
     
-    // Increment usage by 1 second
-    if (!regainUsageToday[site]) regainUsageToday[site] = 0;
-    regainUsageToday[site]++;
-    
-    console.log('[DEBUG] Tick:', { 
-      trackingSite: site, 
-      regainActiveTabSite, 
-      used: regainUsageToday[site], 
-      limit: regainDailyLimits[site],
-      reached: checkDailyLimitReached(site) 
-    });
-    
-    chrome.storage.local.set({ regain_usageToday: regainUsageToday });
-    
-    // Send update to popup if open
-    try {
-      chrome.runtime.sendMessage({
-        type: "regainUsageUpdate",
-        usage: regainUsageToday,
-        limits: regainDailyLimits
+    // Check if the current tab is active first
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs[0] || !tabs[0].url || !tabs[0].url.startsWith('http')) {
+        return; // No active HTTP tab - don't count
+      }
+      const activeSite = getSiteFromUrl(tabs[0].url);
+      if (activeSite !== site) {
+        return; // Active tab is different site
+      }
+      
+      // Increment usage by 1 second
+      if (!regainUsageToday[site]) regainUsageToday[site] = 0;
+      regainUsageToday[site]++;
+      
+      console.log('[DEBUG] Tick:', { 
+        trackingSite: site, 
+        regainActiveTabSite, 
+        used: regainUsageToday[site], 
+        limit: regainDailyLimits[site],
+        reached: checkDailyLimitReached(site) 
       });
-    } catch (e) {}
-    
-    // Check if limit reached
-    if (checkDailyLimitReached(site)) {
-      console.log('[DEBUG] LIMIT REACHED - Showing modal overlay');
-      stopTrackingTab();
-      // Inject modal overlay with data
-      chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        func: (s, l, u) => {
-          window.__regainSite = s;
-          window.__regainLimit = l;
-          window.__regainUsed = u;
-        },
-        args: [site, regainDailyLimits[site] || 0, regainUsageToday[site] || 0]
-      }).then(() => {
-        return chrome.scripting.executeScript({
+      
+      chrome.storage.local.set({ regain_usageToday: regainUsageToday });
+      
+      // Send update to popup if open
+      try {
+        chrome.runtime.sendMessage({
+          type: "regainUsageUpdate",
+          usage: regainUsageToday,
+          limits: regainDailyLimits
+        });
+      } catch (e) {}
+      
+      // Check if limit reached
+      if (checkDailyLimitReached(site)) {
+        console.log('[DEBUG] LIMIT REACHED - Showing modal overlay');
+        stopTrackingTab();
+        // Inject modal overlay with data
+        chrome.scripting.executeScript({
           target: { tabId: tabId },
-          files: ['blocked-modal.js']
+          func: (s, l, u) => {
+            window.__regainSite = s;
+            window.__regainLimit = l;
+            window.__regainUsed = u;
+          },
+          args: [site, regainDailyLimits[site] || 0, regainUsageToday[site] || 0]
+        }).then(() => {
+          return chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ['blocked-modal.js']
+          });
+        }).catch(err => {
+          console.error('[Regain] Failed to inject modal:', err);
+          // Fallback to redirect if injection fails
+          chrome.tabs.update(tabId, {
+            url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site]}&used=${regainUsageToday[site]}&reason=limit`
+          });
         });
-      }).catch(err => {
-        console.error('[Regain] Failed to inject modal:', err);
-        // Fallback to redirect if injection fails
-        chrome.tabs.update(tabId, {
-          url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site]}&used=${regainUsageToday[site]}&reason=limit`
-        });
-      });
-    }
+      }
+    });
   }, 1000); // Track every second
 }
 
@@ -478,6 +489,9 @@ async function initDailyTracking() {
   
   // Listen for tab activation to track time
   chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+    // Always stop tracking first when switching tabs
+    stopTrackingTab();
+    
     try {
       const tab = await chrome.tabs.get(tabId);
       if (tab.url && tab.url.startsWith("http")) {
@@ -491,6 +505,9 @@ async function initDailyTracking() {
   
 // Also track when tab URL changes or page loads
   chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    // Always stop tracking first when tab updates
+    stopTrackingTab();
+    
     const url = changeInfo.url || (tab.url && tab.url.startsWith('http') ? tab.url : null);
     if (url && url.startsWith('http')) {
       const site = getSiteFromUrl(url);
