@@ -303,28 +303,8 @@ function startTrackingTab(tabId, site) {
   regainActiveTabSite = site;
   regainActiveTabId = tabId;
   
-  // Check if limit already reached (persistence check)
   if (checkDailyLimitReached(site)) {
-    // Inject modal overlay with data
-    chrome.scripting.executeScript({
-      target: { tabId: tabId },
-      func: (s, l, u) => {
-        window.__regainSite = s;
-        window.__regainLimit = l;
-        window.__regainUsed = u;
-      },
-      args: [site, regainDailyLimits[site] || 0, regainUsageToday[site] || 0]
-    }).then(() => {
-      return chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        files: ['blocked-modal.js']
-      });
-    }).catch(() => {
-      // Fallback to redirect
-      chrome.tabs.update(tabId, {
-        url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site]}&used=${regainUsageToday[site] || 0}&reason=limit`
-      });
-    });
+    showBlockedModal(tabId, site);
     return;
   }
   
@@ -375,30 +355,52 @@ function startTrackingTab(tabId, site) {
       if (checkDailyLimitReached(site)) {
         console.log('[DEBUG] LIMIT REACHED - Showing modal overlay');
         stopTrackingTab();
-        // Inject modal overlay with data
-        chrome.scripting.executeScript({
-          target: { tabId: tabId },
-          func: (s, l, u) => {
-            window.__regainSite = s;
-            window.__regainLimit = l;
-            window.__regainUsed = u;
-          },
-          args: [site, regainDailyLimits[site] || 0, regainUsageToday[site] || 0]
-        }).then(() => {
-          return chrome.scripting.executeScript({
-            target: { tabId: tabId },
-            files: ['blocked-modal.js']
-          });
-        }).catch(err => {
-          console.error('[Regain] Failed to inject modal:', err);
-          // Fallback to redirect if injection fails
-          chrome.tabs.update(tabId, {
-            url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site]}&used=${regainUsageToday[site]}&reason=limit`
-          });
-        });
+        showBlockedModal(tabId, site);
       }
     });
-  }, 1000); // Track every second
+  }, 1000);
+}
+
+function showBlockedModal(tabId, site) {
+  const used = regainUsageToday[site] || 0;
+  const limit = regainDailyLimits[site] || 0;
+  
+  chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    func: () => {
+      try {
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else if (document.webkitFullscreenElement) {
+          document.webkitExitFullscreen();
+        } else if (document.mozFullScreenElement) {
+          document.mozCancelFullScreen();
+        } else if (document.msFullscreenElement) {
+          document.msExitFullscreen();
+        }
+      } catch (e) {}
+    }
+  }).then(() => {
+    return chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: (s, l, u) => {
+        window.__regainSite = s;
+        window.__regainLimit = l;
+        window.__regainUsed = u;
+      },
+      args: [site, limit, used]
+    });
+  }).then(() => {
+    return chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: ['blocked-modal.js']
+    });
+  }).catch(err => {
+    console.error('[Regain] Failed to show modal:', err);
+    chrome.tabs.update(tabId, {
+      url: `blocked.html?site=${encodeURIComponent(site)}&limit=${limit}&used=${used}&reason=limit`
+    });
+  });
 }
 
 function stopTrackingTab() {
@@ -430,28 +432,9 @@ async function checkExistingTabsOnStartup() {
     for (const tab of tabs) {
       if (tab.url && tab.url.startsWith('http') && tab.active) {
         const site = getSiteFromUrl(tab.url);
-        if (site && isBlockedSite(site) && checkDailyLimitReached(site)) {
-          // Inject modal overlay with data
-          chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: (s, l, u) => {
-              window.__regainSite = s;
-              window.__regainLimit = l;
-              window.__regainUsed = u;
-            },
-            args: [site, regainDailyLimits[site] || 0, regainUsageToday[site] || 0]
-          }).then(() => {
-            return chrome.scripting.executeScript({
-              target: { tabId: tab.id },
-              files: ['blocked-modal.js']
-            });
-          }).catch(() => {
-            // Fallback to redirect
-            chrome.tabs.update(tab.id, {
-              url: `blocked.html?site=${encodeURIComponent(site)}&limit=${regainDailyLimits[site] || 0}&used=${regainUsageToday[site] || 0}&reason=limit`
-            });
-          });
-          break; // Only block one tab
+if (site && isBlockedSite(site) && checkDailyLimitReached(site)) {
+          showBlockedModal(tab.id, site);
+          break;
         }
       }
     }
