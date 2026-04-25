@@ -541,14 +541,18 @@ async function initDailyTracking() {
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "regainAddTime") {
       const { site, secs } = msg;
-      // Increase limit, NOT decrease usage - usage is a running record
       regainDailyLimits[site] = (regainDailyLimits[site] || 0) + secs;
       chrome.storage.local.set({ regain_dailyLimits: regainDailyLimits });
       sendResponse({ success: true });
-      // Resume tracking if this was the active tab
-      if (sender.tab && sender.tab.id === regainActiveTabId) {
-        setTimeout(() => startTrackingTab(sender.tab.id, site), 500);
-      }
+      
+      // Resume tracking for this site
+      setTimeout(() => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs[0] && tabs[0].id) {
+            startTrackingTab(tabs[0].id, site);
+          }
+        });
+      }, 500);
     }
     
     if (msg.type === "regainDeactivateSite") {
