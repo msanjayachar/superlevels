@@ -1458,14 +1458,6 @@ function renderBlocklist() {
     const isDeactivated = regainData.deactivatedToday.includes(site);
     const limitBtns = limitOptions.map(secs => {
       const label = secs < 60 ? `${secs}s` : `${secs / 60}m`;
-      const loaderSecs = secs >= 300 ? Math.round(secs / 60) : 0;
-      if (loaderSecs > 0) {
-        return `<button class="limit-btn has-loader" data-site="${escA(site)}" data-mins="${secs}" data-loader="${loaderSecs}">
-          <div class="loader-ring"></div>
-          <span class="loader-label">${loaderSecs}</span>
-          <span class="limit-label">${label}</span>
-        </button>`;
-      }
       return `<button class="limit-btn ${currentLimit === secs ? 'active' : ''}" data-site="${escA(site)}" data-mins="${secs}">${label}</button>`;
     }).join('');
     const btnLabel = isDeactivated ? "A" : "D";
@@ -1529,29 +1521,6 @@ function renderBlocklist() {
         limit: secs
       }).catch(() => { });
     });
-  });
-
-  // Start loaders for buttons that need them
-  regainBlocklist.querySelectorAll(".limit-btn.has-loader:not(.enabled)").forEach(btn => {
-    const totalSecs = parseInt(btn.dataset.loader);
-    let remaining = totalSecs;
-    btn.style.setProperty("--progress", "100%");
-
-    const interval = setInterval(() => {
-      remaining--;
-      btn.querySelector(".loader-label").textContent = remaining;
-      const progress = ((totalSecs - remaining) / totalSecs) * 100;
-      btn.style.setProperty("--progress", progress + "%");
-
-      if (remaining <= 0) {
-        clearInterval(interval);
-        btn.classList.add("enabled");
-        btn.querySelector(".limit-label").textContent = btn.dataset.mins < 60 ? btn.dataset.mins + "s" : (btn.dataset.mins / 60) + "m";
-      }
-    }, 1000);
-
-    // Immediately show first second
-    btn.querySelector(".loader-label").textContent = remaining;
   });
 }
 
